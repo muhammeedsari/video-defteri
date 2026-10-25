@@ -1,4 +1,10 @@
-# Ses Defteri — Claude için proje rehberi
+# Video Defteri — Claude için proje rehberi
+
+> **Video Defteri, Ses Defteri 2.5'in kopyasıdır** (github.com/muhammeedsari/ses-defteri, tüm geçmişiyle). Hedef: Ses Defteri'nin ses özelliklerinin üstüne internetsiz video düzenleyici.
+> - Yüklü uygulama kimliği **`app.videodefteri`** (`build_apk.py` → `aapt --rename-manifest-package`), Ses Defteri'nin yanına ayrı kurulur. Java paketi **`app.sesdefteri` olarak kaldı**: hazır JNI köprüleri (`libsdsep.so`, `libsdmp3.so`) bu pakete bağlı; paketi değiştirmek için önce `android/native/*.c` yeniden derlenmeli.
+> - Uygulama adı ve klasör: "Video Defteri" (`Music/Video Defteri`). Sürüm 0.1 (versionCode 1); APK `android/VideoDefteri.apk`. Aynı imza anahtarı kullanılır.
+> - Ses Defteri'deki yeni sürümler: `git remote add ses https://github.com/muhammeedsari/ses-defteri && git fetch ses && git merge ses/main` (ortak geçmiş var).
+> Aşağıdaki metin Ses Defteri içindir; çelişirse yukarıdaki geçerlidir.
 
 Bu dosyayı her oturumun başında oku. Ayrıntılar: `docs/DURUM.md` (sürüm geçmişi, ne çalışıyor, ne kaldı) ve `docs/MIMARI.md` (kod haritası, köprüler, veri yapıları).
 

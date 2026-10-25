@@ -307,7 +307,7 @@ public class MainActivity extends Activity implements Player.Listener {
         return data.getData() != null ? new Uri[]{data.getData()} : null;
     }
 
-    /* ---------- audio shared into the app or picked: copied into Music/Ses Defteri ---------- */
+    /* ---------- audio shared into the app or picked: copied into Music/Video Defteri ---------- */
 
     @Override
     protected void onNewIntent(Intent intent) {
@@ -359,7 +359,7 @@ public class MainActivity extends Activity implements Player.Listener {
         });
     }
 
-    /** the sound of picked videos becomes new recordings (AAC in Music/Ses Defteri) */
+    /** the sound of picked videos becomes new recordings (AAC in Music/Video Defteri) */
     private void importVideos(final Uri[] uris) {
         js("window.__sdBusy && window.__sdBusy(" + q(videoBusy == null ? "…" : videoBusy) + ")");
         studioPool.execute(new Runnable() {
@@ -492,7 +492,7 @@ public class MainActivity extends Activity implements Player.Listener {
                 o.put("asr", Studio.asrAvailable());
                 o.put("sep", Separator.available());
                 o.put("mp3", Mp3.available());
-                o.put("folder", MediaLib.scoped() ? "Music/Ses Defteri" : "Android/data/app.sesdefteri/files/Music/Ses Defteri");
+                o.put("folder", MediaLib.scoped() ? "Music/Video Defteri" : "Android/data/app.videodefteri/files/Music/Video Defteri");
             } catch (Exception ignored) { }
             return o.toString();
         }
@@ -521,7 +521,7 @@ public class MainActivity extends Activity implements Player.Listener {
             ui(new Runnable() {
                 @Override public void run() {
                     ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                    if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("Ses Defteri", text));
+                    if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("Video Defteri", text));
                 }
             });
         }
@@ -779,7 +779,7 @@ public class MainActivity extends Activity implements Player.Listener {
                             };
                             res = AudioTools.peaks(MainActivity.this, a.getJSONObject("src"), a.optLong("startMs", 0), p, ch, cancel);
                         } else if ("commit".equals(kind)) {
-                            // a file the page assembled with beginFile/appendFile → Music/Ses Defteri (re-encoded to .m4a)
+                            // a file the page assembled with beginFile/appendFile → Music/Video Defteri (re-encoded to .m4a)
                             String tok = a.getString("token");
                             File f = closeFile(tok);
                             if (f == null) throw new IllegalStateException("no file");

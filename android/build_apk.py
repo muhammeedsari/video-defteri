@@ -1,7 +1,9 @@
-"""Builds Ses Defteri.apk: bundles the web app into assets, compiles the Java shell, signs the APK."""
+"""Builds Video Defteri.apk: bundles the web app into assets, compiles the Java shell, signs the APK."""
 import os, re, shutil, subprocess, pathlib
 from PIL import Image, ImageDraw
 
+# installed app id; the Java package stays app.sesdefteri because the prebuilt JNI bridges are bound to it
+APP_ID = "app.videodefteri"
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent
 WEB = pathlib.Path(os.environ.get("SD_WEB", ROOT / "web"))
@@ -151,7 +153,7 @@ def main():
     # package
     unsigned = OUT / "app-unsigned.apk"
     run(["aapt", "package", "-f", "-M", str(HERE / "AndroidManifest.xml"), "-S", str(res), "-A", str(HERE / "assets"),
-         "-I", str(ANDROID_JAR), "-F", str(unsigned)])
+         "-I", str(ANDROID_JAR), "--rename-manifest-package", APP_ID, "-F", str(unsigned)])
     run(["aapt", "add", str(unsigned), "classes.dex"], cwd=str(OUT / "dex"))
     # native speech-to-text libraries
     libs = OUT / "libs"
@@ -173,7 +175,7 @@ def main():
         run(["keytool", "-genkeypair", "-keystore", str(KS), "-storetype", "PKCS12", "-storepass", KS_PASS,
              "-keypass", KS_PASS, "-alias", "sesdefteri", "-keyalg", "RSA", "-keysize", "2048", "-validity", "10000",
              "-dname", "CN=Ses Defteri, O=Ses Defteri, C=TR"])
-    final = HERE / ("SesDefteri-hafif.apk" if LITE else "SesDefteri.apk")
+    final = HERE / ("VideoDefteri-hafif.apk" if LITE else "VideoDefteri.apk")
     run(["apksigner", "sign", "--ks", str(KS), "--ks-pass", f"pass:{KS_PASS}", "--ks-key-alias", "sesdefteri",
          "--min-sdk-version", "24", "--out", str(final), str(aligned)])
     print(run(["apksigner", "verify", "--verbose", "--min-sdk-version", "24", str(final)]))

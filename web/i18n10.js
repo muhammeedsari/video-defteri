@@ -1,4 +1,4 @@
-/* Ses Defteri 2.0 — snapping, markers, punch-in, chapters, ringtone, video (merged into SD_I18N). */
+/* Video Defteri 2.0 — snapping, markers, punch-in, chapters, ringtone, video (merged into SD_I18N). */
 (function () {
 const A = {
 tr: { tlSnap: "Mıknatıs (yapıştırma)", snapOn: "Yapıştırma açık", snapOff: "Yapıştırma kapalı", tlMarker: "İşaretçi", markerAdded: "İşaretçi eklendi", markerDelQ: "İşaretçi silinsin mi?",

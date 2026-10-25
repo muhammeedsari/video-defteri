@@ -1,4 +1,4 @@
-/* Ses Defteri 1.4 — "Edit sound" tab texts (merged into SD_I18N). */
+/* Video Defteri 1.4 — "Edit sound" tab texts (merged into SD_I18N). */
 (function () {
 const A = {
 tr: {

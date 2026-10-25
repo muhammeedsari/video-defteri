@@ -1,4 +1,4 @@
-/* Ses Defteri 1.5 — multitrack timeline texts (merged into SD_I18N). */
+/* Video Defteri 1.5 — multitrack timeline texts (merged into SD_I18N). */
 (function () {
 const A = {
 tr: {

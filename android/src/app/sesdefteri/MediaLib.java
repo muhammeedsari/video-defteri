@@ -25,9 +25,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/** Phone audio library (MediaStore) and the app's own folder: Music/Ses Defteri. */
+/** Phone audio library (MediaStore) and the app's own folder: Music/Video Defteri. */
 final class MediaLib {
-    static final String FOLDER = "Ses Defteri";
+    static final String FOLDER = "Video Defteri";
 
     private MediaLib() { }
 
@@ -194,7 +194,7 @@ final class MediaLib {
         return "audio/mpeg";
     }
 
-    /* ---------- creating files in Music/Ses Defteri ---------- */
+    /* ---------- creating files in Music/Video Defteri ---------- */
 
     /** A new, still-hidden file. Call {@link #publish} when its bytes are complete. */
     static final class Target {
@@ -298,7 +298,7 @@ final class MediaLib {
         } catch (Exception ignored) { }
     }
 
-    /** Copies any readable audio (shared in, picked, or a temp file) into Music/Ses Defteri. */
+    /** Copies any readable audio (shared in, picked, or a temp file) into Music/Video Defteri. */
     static JSONObject copyIn(Context c, Uri from, File fromFile, String displayName, String mime) throws IOException {
         if (displayName == null || displayName.isEmpty()) displayName = "Ses " + System.currentTimeMillis() + ".m4a";
         if (mime == null || mime.isEmpty() || !mime.startsWith("audio/")) mime = mimeForName(displayName);
@@ -346,7 +346,7 @@ final class MediaLib {
     static final String ORIGINALS = "Orijinaller";
 
     /**
-     * Moves one of the app's own files into Music/Ses Defteri/Orijinaller (kept for "undo"), or back.
+     * Moves one of the app's own files into Music/Video Defteri/Orijinaller (kept for "undo"), or back.
      * Returns the new src, or null when the system does not allow it (the file then stays where it is).
      */
     static JSONObject moveOwn(Context c, JSONObject src, boolean toOriginals) {

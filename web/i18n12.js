@@ -1,4 +1,4 @@
-/* Ses Defteri 2.2 — speech-to-text model, text editing, retakes, hesitations, topics (merged into SD_I18N). */
+/* Video Defteri 2.2 — speech-to-text model, text editing, retakes, hesitations, topics (merged into SD_I18N). */
 (function () {
 const A = {
 tr: { teBtn: "Metinden düzenle", teScan: "Dolgu sesleri aranıyor…", teTitle: "Metinden düzenle", teD: "Silmek istediğin cümleleri işaretle; sesteki karşılıkları da silinir. ▶ ile önce dinleyebilirsin.",

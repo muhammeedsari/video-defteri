@@ -1,4 +1,4 @@
-/* Ses Defteri 1.8 — MP3, file names, trash, settings (merged into SD_I18N). */
+/* Video Defteri 1.8 — MP3, file names, trash, settings (merged into SD_I18N). */
 (function () {
 const L = "LAME (LGPL) · sherpa-onnx (Apache-2.0) · ONNX Runtime (MIT) · Whisper (MIT) · Spleeter (MIT) · Silero VAD (MIT)";
 const A = {

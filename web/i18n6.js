@@ -1,4 +1,4 @@
-/* Ses Defteri 1.7 — purpose, room test, live warnings, one-tap Clean (merged into SD_I18N). */
+/* Video Defteri 1.7 — purpose, room test, live warnings, one-tap Clean (merged into SD_I18N). */
 (function () {
 const A = {
 tr: {

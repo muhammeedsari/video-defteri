@@ -1,4 +1,4 @@
-/* Ses Defteri 1.9 — pauses, breaths, declip, 5-band EQ, batch Clean (merged into SD_I18N). */
+/* Video Defteri 1.9 — pauses, breaths, declip, 5-band EQ, batch Clean (merged into SD_I18N). */
 (function () {
 const A = {
 tr: { op_pauses: "Duraklamaları kısalt", op_breaths: "Nefesleri kıs", op_declip: "Patlamış sesi onar", op_eqpreset: "EQ",

@@ -14,7 +14,7 @@ import java.io.IOException;
 
 /** Hands a prepared file in cache/share to the app the user picked in the share sheet (read-only). */
 public class ShareProvider extends ContentProvider {
-    static final String AUTHORITY = "app.sesdefteri.share";
+    static final String AUTHORITY = "app.videodefteri.share";
 
     @Override
     public boolean onCreate() {

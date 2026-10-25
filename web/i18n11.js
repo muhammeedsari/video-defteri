@@ -1,4 +1,4 @@
-/* Ses Defteri 2.1 — player, effects, file info, room memory (merged into SD_I18N). */
+/* Video Defteri 2.1 — player, effects, file info, room memory (merged into SD_I18N). */
 (function () {
 const A = {
 tr: { off: "Kapalı", setPlayer: "Çalar", setNorm: "Kayıtlar aynı yükseklikte çalsın", setNormD: "Her sesin yüksekliği bir kez ölçülür; kısık ve bağıran kayıtlar dengelenir.",

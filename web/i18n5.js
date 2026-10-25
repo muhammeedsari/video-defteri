@@ -1,4 +1,4 @@
-/* Ses Defteri 1.6 — voice separation, ducking, recording onto the timeline, beats (merged into SD_I18N). */
+/* Video Defteri 1.6 — voice separation, ducking, recording onto the timeline, beats (merged into SD_I18N). */
 (function () {
 const A = {
 tr: {

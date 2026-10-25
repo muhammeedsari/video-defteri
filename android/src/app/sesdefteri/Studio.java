@@ -149,7 +149,7 @@ final class Studio {
     static String safe(String n) {
         String s = n == null ? "" : n.replaceAll("[\\\\/:*?\"<>|]+", " ").replaceAll("\\s+", " ").trim();
         if (s.length() > 80) s = s.substring(0, 80).trim();
-        return s.isEmpty() ? "Ses Defteri" : s;
+        return s.isEmpty() ? "Video Defteri" : s;
     }
 
     static JSONObject beatsJson(Beats b, double shift) throws Exception {

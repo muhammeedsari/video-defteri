@@ -1,4 +1,4 @@
-/* Ses Defteri 1.7.1 — merge, track mute badges, AI noise removal, "nothing to fix" (merged into SD_I18N). */
+/* Video Defteri 1.7.1 — merge, track mute badges, AI noise removal, "nothing to fix" (merged into SD_I18N). */
 (function () {
 const A = {
 tr: { tlMerge: "Birleştir", tlNoMerge: "Birleştirmek için aynı katmanda sağında bir parça olmalı", tlMuted: "Katman {n} sessize alındı", tlUnmuted: "Katman {n} sesi açıldı",

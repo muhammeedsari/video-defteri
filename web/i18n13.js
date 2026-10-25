@@ -1,4 +1,4 @@
-/* Ses Defteri 2.3 — clipboard, inserted silence, mouth clicks, mono→stereo, playlists, queue, new settings (merged into SD_I18N). */
+/* Video Defteri 2.3 — clipboard, inserted silence, mouth clicks, mono→stereo, playlists, queue, new settings (merged into SD_I18N). */
 (function () {
 const A = {
 tr: { more: "Daha fazla", tlCopy: "Kopyala", tlCut: "Kes", tlPaste: "Yapıştır", tlCopied: "Parça kopyalandı; başka yere veya başka projeye yapıştırabilirsin", tlCutDone: "Parça kesildi; Yapıştır ile istediğin yere koy",
@@ -13,7 +13,7 @@ tr: { more: "Daha fazla", tlCopy: "Kopyala", tlCut: "Kes", tlPaste: "Yapıştır
   setPause: "Duraklama kesme eşiği", setChans: "Kanal", ch_auto: "Olduğu gibi", ch_mono: "Mono", ch_stereo: "Stereo",
   setGeneral: "Genel", setStartTab: "Açılış sekmesi", stLast: "En son açık olan",
   privacy: "Gizlilik", feedback: "Geri bildirim gönder",
-  privacyText: "Ses Defteri internetsiz çalışır. Kayıtların, müziklerin ve notların yalnızca telefonunda saklanır; hiçbir sunucuya gönderilmez.\nUygulama hesap istemez, reklam ve takip aracı içermez, kullanım verisi toplamaz.\nİnternet yalnızca sen isteyince kullanılır: daha iyi bir \"sesten metne\" modeli indirmek veya geri bildirim sayfasını açmak için.\nMikrofon yalnızca kayıt yaparken, müzik izni ise telefonundaki sesleri listelemek için kullanılır." },
+  privacyText: "Video Defteri internetsiz çalışır. Kayıtların, müziklerin ve notların yalnızca telefonunda saklanır; hiçbir sunucuya gönderilmez.\nUygulama hesap istemez, reklam ve takip aracı içermez, kullanım verisi toplamaz.\nİnternet yalnızca sen isteyince kullanılır: daha iyi bir \"sesten metne\" modeli indirmek veya geri bildirim sayfasını açmak için.\nMikrofon yalnızca kayıt yaparken, müzik izni ise telefonundaki sesleri listelemek için kullanılır." },
 en: { more: "More", tlCopy: "Copy", tlCut: "Cut", tlPaste: "Paste", tlCopied: "Clip copied; paste it elsewhere or into another project", tlCutDone: "Clip cut; use Paste to put it where you want",
   tlInsSil: "Insert silence", tlInsSilD: "Silence is inserted at the playhead; everything after it moves right.", pp_silLen: "Length", tlInsSilDone: "{s} of silence inserted",
   op_mouth: "Remove mouth clicks", fxd_mouth: "Repairs short mouth noises like lip smacks and tongue clicks", op_stereo: "Mono → stereo", fxd_stereo: "Turns single-channel audio into two channels", rpStereo: "Converted to stereo",
@@ -26,7 +26,7 @@ en: { more: "More", tlCopy: "Copy", tlCut: "Cut", tlPaste: "Paste", tlCopied: "C
   setPause: "Pause cut threshold", setChans: "Channels", ch_auto: "As is", ch_mono: "Mono", ch_stereo: "Stereo",
   setGeneral: "General", setStartTab: "Start tab", stLast: "Last opened",
   privacy: "Privacy", feedback: "Send feedback",
-  privacyText: "Ses Defteri works offline. Your recordings, music and notes are stored only on your phone and are never sent to a server.\nThe app needs no account, contains no ads or trackers and collects no usage data.\nThe internet is used only when you ask: to download a better speech-to-text model or to open the feedback page.\nThe microphone is used only while recording; the music permission only lists the audio on your phone." },
+  privacyText: "Video Defteri works offline. Your recordings, music and notes are stored only on your phone and are never sent to a server.\nThe app needs no account, contains no ads or trackers and collects no usage data.\nThe internet is used only when you ask: to download a better speech-to-text model or to open the feedback page.\nThe microphone is used only while recording; the music permission only lists the audio on your phone." },
 de: { more: "Mehr", tlCopy: "Kopieren", tlCut: "Ausschneiden", tlPaste: "Einfügen", tlCopied: "Clip kopiert; füge ihn woanders oder in ein anderes Projekt ein", tlCutDone: "Clip ausgeschnitten; mit Einfügen an die gewünschte Stelle setzen",
   tlInsSil: "Stille einfügen", tlInsSilD: "Am Abspielkopf wird Stille eingefügt; alles danach rückt nach rechts.", pp_silLen: "Länge", tlInsSilDone: "{s} Stille eingefügt",
   op_mouth: "Mundgeräusche entfernen", fxd_mouth: "Repariert kurze Mundgeräusche wie Schmatzen und Zungenklicks", op_stereo: "Mono → Stereo", fxd_stereo: "Macht aus einkanaligem Ton zwei Kanäle", rpStereo: "In Stereo umgewandelt",
@@ -39,7 +39,7 @@ de: { more: "Mehr", tlCopy: "Kopieren", tlCut: "Ausschneiden", tlPaste: "Einfüg
   setPause: "Schwelle für Pausenschnitt", setChans: "Kanäle", ch_auto: "Unverändert", ch_mono: "Mono", ch_stereo: "Stereo",
   setGeneral: "Allgemein", setStartTab: "Start-Tab", stLast: "Zuletzt geöffnet",
   privacy: "Datenschutz", feedback: "Feedback senden",
-  privacyText: "Ses Defteri funktioniert offline. Aufnahmen, Musik und Notizen bleiben nur auf deinem Telefon und werden an keinen Server gesendet.\nDie App braucht kein Konto, enthält keine Werbung oder Tracker und sammelt keine Nutzungsdaten.\nInternet wird nur auf deinen Wunsch genutzt: zum Laden eines besseren Sprache-zu-Text-Modells oder zum Öffnen der Feedback-Seite.\nDas Mikrofon wird nur beim Aufnehmen genutzt, die Musikberechtigung nur zum Auflisten der Audios auf dem Telefon." },
+  privacyText: "Video Defteri funktioniert offline. Aufnahmen, Musik und Notizen bleiben nur auf deinem Telefon und werden an keinen Server gesendet.\nDie App braucht kein Konto, enthält keine Werbung oder Tracker und sammelt keine Nutzungsdaten.\nInternet wird nur auf deinen Wunsch genutzt: zum Laden eines besseren Sprache-zu-Text-Modells oder zum Öffnen der Feedback-Seite.\nDas Mikrofon wird nur beim Aufnehmen genutzt, die Musikberechtigung nur zum Auflisten der Audios auf dem Telefon." },
 fr: { more: "Plus", tlCopy: "Copier", tlCut: "Couper", tlPaste: "Coller", tlCopied: "Clip copié ; colle-le ailleurs ou dans un autre projet", tlCutDone: "Clip coupé ; utilise Coller pour le placer",
   tlInsSil: "Insérer un silence", tlInsSilD: "Un silence est inséré à la tête de lecture ; tout ce qui suit se décale à droite.", pp_silLen: "Durée", tlInsSilDone: "{s} de silence insérées",
   op_mouth: "Supprimer les bruits de bouche", fxd_mouth: "Répare les petits bruits de bouche comme les claquements de lèvres ou de langue", op_stereo: "Mono → stéréo", fxd_stereo: "Transforme un son à un canal en deux canaux", rpStereo: "Converti en stéréo",
@@ -52,7 +52,7 @@ fr: { more: "Plus", tlCopy: "Copier", tlCut: "Couper", tlPaste: "Coller", tlCopi
   setPause: "Seuil de coupe des pauses", setChans: "Canaux", ch_auto: "Tel quel", ch_mono: "Mono", ch_stereo: "Stéréo",
   setGeneral: "Général", setStartTab: "Onglet au démarrage", stLast: "Dernier ouvert",
   privacy: "Confidentialité", feedback: "Envoyer un avis",
-  privacyText: "Ses Defteri fonctionne hors ligne. Tes enregistrements, ta musique et tes notes restent sur ton téléphone et ne sont jamais envoyés à un serveur.\nL’appli ne demande aucun compte, ne contient ni publicité ni traceur et ne collecte aucune donnée d’usage.\nInternet n’est utilisé qu’à ta demande : pour télécharger un meilleur modèle de transcription ou ouvrir la page d’avis.\nLe micro n’est utilisé que pendant l’enregistrement ; l’autorisation musique sert seulement à lister les sons du téléphone." },
+  privacyText: "Video Defteri fonctionne hors ligne. Tes enregistrements, ta musique et tes notes restent sur ton téléphone et ne sont jamais envoyés à un serveur.\nL’appli ne demande aucun compte, ne contient ni publicité ni traceur et ne collecte aucune donnée d’usage.\nInternet n’est utilisé qu’à ta demande : pour télécharger un meilleur modèle de transcription ou ouvrir la page d’avis.\nLe micro n’est utilisé que pendant l’enregistrement ; l’autorisation musique sert seulement à lister les sons du téléphone." },
 es: { more: "Más", tlCopy: "Copiar", tlCut: "Cortar", tlPaste: "Pegar", tlCopied: "Clip copiado; pégalo en otro lugar u otro proyecto", tlCutDone: "Clip cortado; usa Pegar para ponerlo donde quieras",
   tlInsSil: "Insertar silencio", tlInsSilD: "Se inserta silencio en el cabezal; todo lo que sigue se mueve a la derecha.", pp_silLen: "Duración", tlInsSilDone: "{s} de silencio insertados",
   op_mouth: "Quitar ruidos de boca", fxd_mouth: "Repara ruidos cortos de boca como chasquidos de labios y lengua", op_stereo: "Mono → estéreo", fxd_stereo: "Convierte audio de un canal en dos canales", rpStereo: "Convertido a estéreo",
@@ -65,7 +65,7 @@ es: { more: "Más", tlCopy: "Copiar", tlCut: "Cortar", tlPaste: "Pegar", tlCopie
   setPause: "Umbral de corte de pausas", setChans: "Canales", ch_auto: "Tal cual", ch_mono: "Mono", ch_stereo: "Estéreo",
   setGeneral: "General", setStartTab: "Pestaña inicial", stLast: "La última abierta",
   privacy: "Privacidad", feedback: "Enviar comentarios",
-  privacyText: "Ses Defteri funciona sin internet. Tus grabaciones, música y notas se guardan solo en tu teléfono y nunca se envían a un servidor.\nLa app no pide cuenta, no tiene anuncios ni rastreadores y no recoge datos de uso.\nInternet solo se usa cuando lo pides: para descargar un mejor modelo de voz a texto o abrir la página de comentarios.\nEl micrófono solo se usa al grabar; el permiso de música solo sirve para listar los audios del teléfono." },
+  privacyText: "Video Defteri funciona sin internet. Tus grabaciones, música y notas se guardan solo en tu teléfono y nunca se envían a un servidor.\nLa app no pide cuenta, no tiene anuncios ni rastreadores y no recoge datos de uso.\nInternet solo se usa cuando lo pides: para descargar un mejor modelo de voz a texto o abrir la página de comentarios.\nEl micrófono solo se usa al grabar; el permiso de música solo sirve para listar los audios del teléfono." },
 pt: { more: "Mais", tlCopy: "Copiar", tlCut: "Recortar", tlPaste: "Colar", tlCopied: "Clipe copiado; cole em outro lugar ou outro projeto", tlCutDone: "Clipe recortado; use Colar para colocá-lo onde quiser",
   tlInsSil: "Inserir silêncio", tlInsSilD: "O silêncio é inserido na agulha; tudo depois se move para a direita.", pp_silLen: "Duração", tlInsSilDone: "{s} de silêncio inseridos",
   op_mouth: "Remover ruídos de boca", fxd_mouth: "Repara ruídos curtos de boca como estalos de lábios e língua", op_stereo: "Mono → estéreo", fxd_stereo: "Transforma áudio de um canal em dois canais", rpStereo: "Convertido para estéreo",
@@ -78,7 +78,7 @@ pt: { more: "Mais", tlCopy: "Copiar", tlCut: "Recortar", tlPaste: "Colar", tlCop
   setPause: "Limite de corte de pausas", setChans: "Canais", ch_auto: "Como está", ch_mono: "Mono", ch_stereo: "Estéreo",
   setGeneral: "Geral", setStartTab: "Aba inicial", stLast: "A última aberta",
   privacy: "Privacidade", feedback: "Enviar feedback",
-  privacyText: "O Ses Defteri funciona offline. Suas gravações, músicas e notas ficam só no seu telefone e nunca são enviadas a um servidor.\nO app não pede conta, não tem anúncios nem rastreadores e não coleta dados de uso.\nA internet só é usada quando você pede: para baixar um modelo melhor de voz para texto ou abrir a página de feedback.\nO microfone só é usado ao gravar; a permissão de música só serve para listar os áudios do telefone." },
+  privacyText: "O Video Defteri funciona offline. Suas gravações, músicas e notas ficam só no seu telefone e nunca são enviadas a um servidor.\nO app não pede conta, não tem anúncios nem rastreadores e não coleta dados de uso.\nA internet só é usada quando você pede: para baixar um modelo melhor de voz para texto ou abrir a página de feedback.\nO microfone só é usado ao gravar; a permissão de música só serve para listar os áudios do telefone." },
 ru: { more: "Ещё", tlCopy: "Копировать", tlCut: "Вырезать", tlPaste: "Вставить", tlCopied: "Клип скопирован; вставь его в другое место или проект", tlCutDone: "Клип вырезан; вставь его кнопкой «Вставить»",
   tlInsSil: "Вставить тишину", tlInsSilD: "Тишина вставляется в позиции курсора; всё после неё сдвигается вправо.", pp_silLen: "Длительность", tlInsSilDone: "Вставлено тишины: {s}",
   op_mouth: "Убрать звуки рта", fxd_mouth: "Исправляет короткие звуки рта — причмокивания и щелчки языка", op_stereo: "Моно → стерео", fxd_stereo: "Превращает одноканальный звук в двухканальный", rpStereo: "Преобразовано в стерео",
@@ -91,7 +91,7 @@ ru: { more: "Ещё", tlCopy: "Копировать", tlCut: "Вырезать",
   setPause: "Порог сокращения пауз", setChans: "Каналы", ch_auto: "Как есть", ch_mono: "Моно", ch_stereo: "Стерео",
   setGeneral: "Общие", setStartTab: "Вкладка при запуске", stLast: "Последняя открытая",
   privacy: "Конфиденциальность", feedback: "Отправить отзыв",
-  privacyText: "Ses Defteri работает без интернета. Записи, музыка и заметки хранятся только на телефоне и никогда не отправляются на сервер.\nПриложению не нужен аккаунт, в нём нет рекламы и трекеров, оно не собирает данные об использовании.\nИнтернет используется только по твоему запросу: чтобы скачать лучшую модель распознавания речи или открыть страницу отзывов.\nМикрофон используется только во время записи, разрешение на музыку — только чтобы показать аудио на телефоне." },
+  privacyText: "Video Defteri работает без интернета. Записи, музыка и заметки хранятся только на телефоне и никогда не отправляются на сервер.\nПриложению не нужен аккаунт, в нём нет рекламы и трекеров, оно не собирает данные об использовании.\nИнтернет используется только по твоему запросу: чтобы скачать лучшую модель распознавания речи или открыть страницу отзывов.\nМикрофон используется только во время записи, разрешение на музыку — только чтобы показать аудио на телефоне." },
 ar: { more: "المزيد", tlCopy: "نسخ", tlCut: "قص", tlPaste: "لصق", tlCopied: "تم نسخ المقطع؛ الصقه في مكان آخر أو مشروع آخر", tlCutDone: "تم قص المقطع؛ استخدم لصق لوضعه حيث تريد",
   tlInsSil: "إدراج صمت", tlInsSilD: "يُدرج الصمت عند مؤشر التشغيل؛ ويتحرك كل ما بعده إلى اليمين.", pp_silLen: "المدة", tlInsSilDone: "تم إدراج {s} من الصمت",
   op_mouth: "إزالة أصوات الفم", fxd_mouth: "يصلح أصوات الفم القصيرة مثل طقطقة الشفاه واللسان", op_stereo: "أحادي ← ستيريو", fxd_stereo: "يحوّل الصوت أحادي القناة إلى قناتين", rpStereo: "تم التحويل إلى ستيريو",
@@ -104,7 +104,7 @@ ar: { more: "المزيد", tlCopy: "نسخ", tlCut: "قص", tlPaste: "لصق", 
   setPause: "حد قص التوقفات", setChans: "القنوات", ch_auto: "كما هو", ch_mono: "أحادي", ch_stereo: "ستيريو",
   setGeneral: "عام", setStartTab: "علامة البدء", stLast: "آخر علامة مفتوحة",
   privacy: "الخصوصية", feedback: "إرسال ملاحظات",
-  privacyText: "يعمل Ses Defteri دون إنترنت. تُحفظ تسجيلاتك وموسيقاك وملاحظاتك على هاتفك فقط ولا تُرسل إلى أي خادم.\nلا يطلب التطبيق حسابًا ولا يحتوي على إعلانات أو أدوات تتبع ولا يجمع بيانات الاستخدام.\nيُستخدم الإنترنت فقط عندما تطلب: لتنزيل نموذج أفضل لتحويل الكلام إلى نص أو لفتح صفحة الملاحظات.\nيُستخدم الميكروفون أثناء التسجيل فقط، وإذن الموسيقى فقط لعرض الأصوات الموجودة على الهاتف." },
+  privacyText: "يعمل Video Defteri دون إنترنت. تُحفظ تسجيلاتك وموسيقاك وملاحظاتك على هاتفك فقط ولا تُرسل إلى أي خادم.\nلا يطلب التطبيق حسابًا ولا يحتوي على إعلانات أو أدوات تتبع ولا يجمع بيانات الاستخدام.\nيُستخدم الإنترنت فقط عندما تطلب: لتنزيل نموذج أفضل لتحويل الكلام إلى نص أو لفتح صفحة الملاحظات.\nيُستخدم الميكروفون أثناء التسجيل فقط، وإذن الموسيقى فقط لعرض الأصوات الموجودة على الهاتف." },
 zh: { more: "更多", tlCopy: "复制", tlCut: "剪切", tlPaste: "粘贴", tlCopied: "已复制片段，可粘贴到别处或其他项目", tlCutDone: "已剪切片段，用“粘贴”放到想要的位置",
   tlInsSil: "插入静音", tlInsSilD: "在播放头处插入静音，后面的内容全部右移。", pp_silLen: "时长", tlInsSilDone: "已插入 {s} 静音",
   op_mouth: "去除口腔杂音", fxd_mouth: "修复咂嘴、舌头咔嗒等短促口腔杂音", op_stereo: "单声道 → 立体声", fxd_stereo: "把单声道音频变成双声道", rpStereo: "已转换为立体声",
@@ -117,7 +117,7 @@ zh: { more: "更多", tlCopy: "复制", tlCut: "剪切", tlPaste: "粘贴", tlCo
   setPause: "停顿剪切阈值", setChans: "声道", ch_auto: "保持原样", ch_mono: "单声道", ch_stereo: "立体声",
   setGeneral: "通用", setStartTab: "启动标签页", stLast: "上次打开的",
   privacy: "隐私", feedback: "发送反馈",
-  privacyText: "Ses Defteri 离线工作。你的录音、音乐和笔记只保存在手机上，绝不会发送到服务器。\n应用无需账号，没有广告和跟踪器，也不收集使用数据。\n只有在你需要时才会联网：下载更好的语音转文字模型或打开反馈页面。\n麦克风只在录音时使用，音乐权限只用于列出手机上的音频。" }
+  privacyText: "Video Defteri 离线工作。你的录音、音乐和笔记只保存在手机上，绝不会发送到服务器。\n应用无需账号，没有广告和跟踪器，也不收集使用数据。\n只有在你需要时才会联网：下载更好的语音转文字模型或打开反馈页面。\n麦克风只在录音时使用，音乐权限只用于列出手机上的音频。" }
 };
 for (const l in A) window.SD_I18N[l] = Object.assign(window.SD_I18N[l] || {}, A[l]);
 })();

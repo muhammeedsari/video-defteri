@@ -1,4 +1,4 @@
-/* Ses Defteri 2.4 — AI speech denoiser, noise from a chosen spot, noise gate, bass/treble, effect history (merged into SD_I18N). */
+/* Video Defteri 2.4 — AI speech denoiser, noise from a chosen spot, noise gate, bass/treble, effect history (merged into SD_I18N). */
 (function () {
 const A = {
 tr: { fxd_aidenoise: "En güçlü temizlik: konuşmaya özel yapay zekâ (DeepFilterNet ailesinden DPDFNet). Trafik, kalabalık, klavye, rüzgâr dahil.", fxd_denoise: "Fan, klima, hışırtı; değişen gürültüyü de takip eder",

@@ -1,4 +1,4 @@
-/* Ses Defteri 2.5 — optional speech-to-text models, two AI noise removals (merged into SD_I18N). */
+/* Video Defteri 2.5 — optional speech-to-text models, two AI noise removals (merged into SD_I18N). */
 (function () {
 const A = {
 tr: { asr_base: "Standart", asr_small: "Gelişmiş", asrD_base: "Hızlı, çoğu kayıt için yeterli", asrD_small: "Türkçede hataları yaklaşık üçte bir azaltır, 2–3 kat yavaş",

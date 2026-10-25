@@ -5,7 +5,7 @@
         <svg viewBox="0 0 24 24"><g fill="currentColor"><rect x="3.5" y="10" width="2" height="4" rx="1"/><rect x="7" y="7" width="2" height="10" rx="1"/><rect x="10.5" y="4" width="2" height="16" rx="1"/><rect x="14" y="8.5" width="2" height="7" rx="1"/><rect x="17.5" y="10.5" width="2" height="3" rx="1"/></g><path d="M12.5 4.2l5.2 1.9-5.2 1.9z" fill="#F2B83D"/></svg>
       </div>
       <div style="min-width:0">
-        <h1>Ses Defteri</h1>
+        <h1>Video Defteri</h1>
         <p class="sum" id="summary">&nbsp;</p>
       </div>
     </div>
@@ -206,7 +206,7 @@ const IN_FRAME = (() => { try { return window.self !== window.top; } catch (e) {
 const AND = (() => { try { return window.SesDefteriAndroid || null; } catch (e) { return null; } })();
 const CAPS = (() => { try { return AND && AND.caps ? JSON.parse(AND.caps()) : {}; } catch (e) { return {}; } })();
 const NATIVE = !!(AND && CAPS.native);
-const VERSION = '2.5';
+const VERSION = '0.1';
 const ls = {
   get(k, d) { try { const v = localStorage.getItem('sd:' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem('sd:' + k, JSON.stringify(v)); } catch (e) {} }
@@ -885,7 +885,7 @@ function openSettings() {
     <div class="set-sec"><h4>${esc(t('setStorage'))}</h4>
       <div class="set-sub"><span>${esc(t('setTrash'))}</span><select id="setTrash" class="sel-full">${[30, 7, 0].map(v => `<option value="${v}"${S.trashDays === v ? ' selected' : ''}>${esc(t('trash_' + v))}</option>`).join('')}</select></div>
       <div><button class="btn sm" type="button" id="openTrash">${esc(t('trash'))} (${trashItems().length})</button></div></div>` : ''}
-    <p class="about">Ses Defteri ${VERSION}</p>
+    <p class="about">Video Defteri ${VERSION}</p>
     <p class="about">${esc(t('licenses'))}</p>
     <div class="about-btns"><button class="btn sm" type="button" id="setPriv">${esc(t('privacy'))}</button><button class="btn sm" type="button" id="setFeed">${esc(t('feedback'))}</button></div>
     <div class="modal-actions"><span class="spacer"></span><button class="btn primary" type="button" id="setDone">${esc(t('ok'))}</button></div>`);
@@ -1822,7 +1822,7 @@ function setMediaSession(r) {
   if (NATIVE || !('mediaSession' in navigator)) return;
   try {
     const c = catById(r.categoryId);
-    navigator.mediaSession.metadata = new MediaMetadata({ title: r.title, artist: 'Ses Defteri', album: c ? c.name : '' });
+    navigator.mediaSession.metadata = new MediaMetadata({ title: r.title, artist: 'Video Defteri', album: c ? c.name : '' });
     navigator.mediaSession.setActionHandler('play', play);
     navigator.mediaSession.setActionHandler('pause', () => audio.pause());
     navigator.mediaSession.setActionHandler('seekbackward', () => seek(audio.currentTime - 10));
@@ -3901,7 +3901,7 @@ $('#captureInput').addEventListener('change', async e => {
   if (first) openPlayer(first.id);
 });
 $('#recBtn').addEventListener('click', () => { if (MIC_OK) openRecorder(); else $('#captureInput').click(); });
-// files shared into the app or picked: the phone copies them into Music/Ses Defteri
+// files shared into the app or picked: the phone copies them into Music/Video Defteri
 window.__sdImported = async () => {
   if (!NATIVE || !booted) return;
   let batches = []; try { batches = JSON.parse(AND.takeImported() || '[]'); } catch (e) {}
@@ -4011,7 +4011,7 @@ async function recoverDraft() {
   await db.delRange('chunks', lo, hi).catch(() => {}); await db.del('kv', 'draft').catch(() => {});
 }
 
-/* ---------- moving 1.0 recordings (kept inside the app) into Music/Ses Defteri ---------- */
+/* ---------- moving 1.0 recordings (kept inside the app) into Music/Video Defteri ---------- */
 function blobToB64(b) {
   return new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] || ''); fr.onerror = () => rej(fr.error); fr.readAsDataURL(b); });
 }
@@ -4218,7 +4218,7 @@ function needLang() {
 function showLangPick() {
   const d = document.createElement('div');
   d.className = 'lang-first';
-  d.innerHTML = `<div class="lang-card"><h2>Ses Defteri</h2><p>Choose your language · Dilini seç</p>
+  d.innerHTML = `<div class="lang-card"><h2>Video Defteri</h2><p>Choose your language · Dilini seç</p>
     <div class="langs" role="radiogroup">${LANGS.map(([c, n]) => `<button type="button" role="radio" data-lang="${c}" aria-checked="${c === 'en'}" lang="${c}">${esc(n)}</button>`).join('')}</div>
     <button class="btn primary" type="button" id="langGo">Continue · Devam</button></div>`;
   document.body.appendChild(d);
@@ -4247,7 +4247,7 @@ async function boot() {
   $('#plShare').innerHTML = ic('share') + esc(t(AND || (!IN_FRAME && navigator.canShare) ? 'share' : 'download'));
   $('#plDelete').innerHTML = ic('trash') + esc(t('delete'));
   $('#miniClose').innerHTML = ic('close');
-  $('#foot').textContent = NATIVE ? t('footNative', { folder: CAPS.folder || 'Music/Ses Defteri' }) : t('footWeb');
+  $('#foot').textContent = NATIVE ? t('footNative', { folder: CAPS.folder || 'Music/Video Defteri' }) : t('footWeb');
   S.rate = ls.get('rate', 1); if (!SPEEDS.includes(S.rate)) S.rate = 1;
   if (NATIVE) audio.playbackRate = S.rate;
   setPlayIcons(); setMode(R.mode); updateRecUI();

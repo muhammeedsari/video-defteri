@@ -16,11 +16,11 @@ import android.os.IBinder;
 public class PlayerService extends Service {
     static final String CHANNEL = "playback";
     static final int ID = 8;
-    static final String A_UPDATE = "app.sesdefteri.UPDATE";
-    static final String A_TOGGLE = "app.sesdefteri.TOGGLE";
-    static final String A_NEXT = "app.sesdefteri.NEXT";
-    static final String A_PREV = "app.sesdefteri.PREV";
-    static final String A_STOP = "app.sesdefteri.STOP";
+    static final String A_UPDATE = "app.videodefteri.UPDATE";
+    static final String A_TOGGLE = "app.videodefteri.TOGGLE";
+    static final String A_NEXT = "app.videodefteri.NEXT";
+    static final String A_PREV = "app.videodefteri.PREV";
+    static final String A_STOP = "app.videodefteri.STOP";
 
     private static boolean running;
 

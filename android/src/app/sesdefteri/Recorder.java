@@ -9,7 +9,7 @@ import android.os.ParcelFileDescriptor;
 
 import org.json.JSONObject;
 
-/** Native recorder: AAC in an .m4a file inside Music/Ses Defteri, kept alive by RecordService. */
+/** Native recorder: AAC in an .m4a file inside Music/Video Defteri, kept alive by RecordService. */
 final class Recorder {
     private static MediaRecorder mr;
     private static MediaLib.Target target;

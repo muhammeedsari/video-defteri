@@ -279,7 +279,7 @@ final class Player implements MediaPlayer.OnPreparedListener, MediaPlayer.OnComp
         app = c.getApplicationContext();
         listener = l;
         if (session == null) {
-            session = new MediaSession(app, "SesDefteri");
+            session = new MediaSession(app, "VideoDefteri");
             session.setCallback(new MediaSession.Callback() {
                 @Override public void onPlay() { play(); }
                 @Override public void onPause() { pause(); }
@@ -614,7 +614,7 @@ final class Player implements MediaPlayer.OnPreparedListener, MediaPlayer.OnComp
 
     synchronized String title() {
         JSONObject it = current();
-        return it != null ? it.optString("title", "Ses Defteri") : "Ses Defteri";
+        return it != null ? it.optString("title", "Video Defteri") : "Video Defteri";
     }
 
     synchronized String subtitle() {
