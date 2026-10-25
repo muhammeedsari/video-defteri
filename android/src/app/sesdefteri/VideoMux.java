@@ -35,8 +35,7 @@ final class VideoMux {
         File cache = c.getCacheDir();
         File m4a = new File(cache, "vmix-" + System.nanoTime() + ".m4a"), mp4 = new File(cache, "vout-" + System.nanoTime() + ".mp4");
         File wav = null;
-        MediaExtractor vx = new MediaExtractor(), ax = null;
-        MediaMuxer mux = null;
+        MediaExtractor vx = new MediaExtractor();
         try {
             vx.setDataSource(c, vu, null);
             int vt = -1;
@@ -56,44 +55,67 @@ final class VideoMux {
             wav = new File(r.getString("path"));
 
             // 2. mix → AAC, never longer than the picture (40–70 %)
-            Workspace.Info inf = Workspace.info(wav);
-            long frames = vdur > 0 ? Math.min(inf.frames, vdur * inf.rate / 1000000) : inf.frames;
-            AudioTools.Encoder enc = new AudioTools.Encoder(m4a);
-            enc.start(inf.rate, inf.ch);
-            RandomAccessFile raf = new RandomAccessFile(wav, "r");
-            try {
-                raf.seek(44);
-                final int BL = 4096;
-                byte[] b = new byte[BL * inf.ch * 2];
-                short[] s = new short[BL * inf.ch];
-                for (long done = 0; done < frames; ) {
-                    if (cancel != null && cancel.get()) throw new InterruptedException("cancel");
-                    int n = (int) Math.min(BL, frames - done), cnt = n * inf.ch;
-                    raf.readFully(b, 0, cnt * 2);
-                    for (int i = 0; i < cnt; i++) s[i] = (short) ((b[2 * i] & 0xff) | (b[2 * i + 1] << 8));
-                    enc.feed(s, cnt);
-                    done += n;
-                    if (p != null && (done / BL) % 16 == 0) p.on(0.4 + 0.3 * done / frames);
-                }
-                enc.finish();
-            } catch (Exception e) {
-                enc.abort();
-                throw e;
-            } finally {
-                raf.close();
-            }
+            aac(wav, vdur, m4a, p, 0.4, 0.7, cancel);
 
             // 3. picture + new sound → MP4 (70–100 %)
-            ax = new MediaExtractor();
-            ax.setDataSource(m4a.getAbsolutePath());
-            ax.selectTrack(0);
             vx.selectTrack(vt);
-            mux = new MediaMuxer(mp4.getAbsolutePath(), MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
-            mux.setOrientationHint(rotation(c, vu));
-            int ov, oa;
+            join(vx, vf, vdur, m4a, rotation(c, vu), mp4, p, 0.7, 1, cancel);
+            return publish(c, mp4, a.optString("name", "Video") + ".mp4");
+        } finally {
+            vx.release();
+            if (wav != null) wav.delete();
+            m4a.delete();
+            mp4.delete();
+        }
+    }
+
+    /** 16-bit WAV → AAC .m4a, cut at maxUs when > 0 */
+    static void aac(File wav, long maxUs, File m4a, AudioTools.Progress p, double lo, double hi, AtomicBoolean cancel) throws Exception {
+        Workspace.Info inf = Workspace.info(wav);
+        long frames = maxUs > 0 ? Math.min(inf.frames, maxUs * inf.rate / 1000000) : inf.frames;
+        AudioTools.Encoder enc = new AudioTools.Encoder(m4a);
+        enc.start(inf.rate, inf.ch);
+        RandomAccessFile raf = new RandomAccessFile(wav, "r");
+        try {
+            raf.seek(44);
+            final int BL = 4096;
+            byte[] b = new byte[BL * inf.ch * 2];
+            short[] s = new short[BL * inf.ch];
+            for (long done = 0; done < frames; ) {
+                if (cancel != null && cancel.get()) throw new InterruptedException("cancel");
+                int n = (int) Math.min(BL, frames - done), cnt = n * inf.ch;
+                raf.readFully(b, 0, cnt * 2);
+                for (int i = 0; i < cnt; i++) s[i] = (short) ((b[2 * i] & 0xff) | (b[2 * i + 1] << 8));
+                enc.feed(s, cnt);
+                done += n;
+                if (p != null && (done / BL) % 16 == 0) p.on(lo + (hi - lo) * done / frames);
+            }
+            enc.finish();
+        } catch (Exception e) {
+            enc.abort();
+            throw e;
+        } finally {
+            raf.close();
+        }
+    }
+
+    /** the selected video track of vx + the sound in m4a (null = silent video) → out; the sound never runs past vdur */
+    static void join(MediaExtractor vx, MediaFormat vf, long vdur, File m4a, int rot, File out, AudioTools.Progress p, double lo, double hi,
+                     AtomicBoolean cancel) throws Exception {
+        MediaExtractor ax = null;
+        MediaMuxer mux = null;
+        try {
+            if (m4a != null) {
+                ax = new MediaExtractor();
+                ax.setDataSource(m4a.getAbsolutePath());
+                ax.selectTrack(0);
+            }
+            mux = new MediaMuxer(out.getAbsolutePath(), MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+            if (rot != 0) mux.setOrientationHint(rot);
+            int ov, oa = -1;
             try {
                 ov = mux.addTrack(vf);
-                oa = mux.addTrack(ax.getTrackFormat(0));
+                if (ax != null) oa = mux.addTrack(ax.getTrackFormat(0));
             } catch (Exception e) {
                 throw new IllegalStateException("videofmt");
             }
@@ -101,7 +123,7 @@ final class VideoMux {
             int cap = vf.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE) ? Math.max(vf.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE), 1 << 20) : 4 << 20;
             ByteBuffer buf = ByteBuffer.allocate(cap);
             MediaCodec.BufferInfo bi = new MediaCodec.BufferInfo();
-            boolean vEnd = false, aEnd = false;
+            boolean vEnd = false, aEnd = ax == null;
             long cnt = 0;
             while (!vEnd || !aEnd) {
                 if (cancel != null && cancel.get()) throw new InterruptedException("cancel");
@@ -115,23 +137,16 @@ final class VideoMux {
                 bi.set(0, size, video ? vtm : atm, (x.getSampleFlags() & MediaExtractor.SAMPLE_FLAG_SYNC) != 0 ? MediaCodec.BUFFER_FLAG_KEY_FRAME : 0);
                 mux.writeSampleData(video ? ov : oa, buf, bi);
                 x.advance();
-                if (p != null && vdur > 0 && ++cnt % 64 == 0) p.on(0.7 + 0.3 * Math.min(1, Math.min(vtm, atm) / (double) vdur));
+                if (p != null && vdur > 0 && ++cnt % 64 == 0) p.on(lo + (hi - lo) * Math.min(1, Math.min(vtm, atm) / (double) vdur));
             }
             mux.stop();
-            mux.release();
-            mux = null;
-            return publish(c, mp4, a.optString("name", "Video") + ".mp4");
         } finally {
-            vx.release();
             if (ax != null) ax.release();
             if (mux != null) try { mux.release(); } catch (Exception ignored) { }
-            if (wav != null) wav.delete();
-            m4a.delete();
-            mp4.delete();
         }
     }
 
-    private static int rotation(Context c, Uri u) {
+    static int rotation(Context c, Uri u) {
         MediaMetadataRetriever m = new MediaMetadataRetriever();
         try {
             m.setDataSource(c, u);
@@ -146,7 +161,7 @@ final class VideoMux {
     }
 
     /** Movies/Video Defteri on Android 10+, the app's own Movies folder on 7–9 */
-    private static JSONObject publish(Context c, File from, String name) throws Exception {
+    static JSONObject publish(Context c, File from, String name) throws Exception {
         JSONObject src = new JSONObject();
         Uri u = null;
         File f = null;

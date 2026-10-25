@@ -61,6 +61,7 @@ public class MainActivity extends Activity implements Player.Listener {
     private static final int REQ_DELETE = 15;
     private static final int REQ_VIDEO = 16;
     private static final int REQ_VIDEO_TL = 17;
+    private static final int REQ_VIDEO_V = 18;
     private volatile String videoBusy;
 
     private WebView web;
@@ -105,7 +106,7 @@ public class MainActivity extends Activity implements Player.Listener {
         web.setWebViewClient(new WebViewClient() {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {
-                return serve(req.getUrl());
+                return serve(req);
             }
 
             @Override
@@ -188,11 +189,22 @@ public class MainActivity extends Activity implements Player.Listener {
 
     /* ---------- asset server ---------- */
 
-    private WebResourceResponse serve(Uri u) {
+    private WebResourceResponse serve(WebResourceRequest req) {
+        Uri u = req.getUrl();
         if (u == null || !HOST.equals(u.getHost())) return null;
         String path = u.getPath();
         if (path == null || path.equals("/") || path.isEmpty()) path = "/index.html";
         Map<String, String> headers = new HashMap<>();
+        if (path.equals("/__vid")) return video(u.getQueryParameter("u"), req.getRequestHeaders());
+        if (path.equals("/__thumb")) {
+            String vu = u.getQueryParameter("u");
+            long ms = 0;
+            try { ms = Long.parseLong(u.getQueryParameter("t")); } catch (Exception ignored) { }
+            byte[] jpg = vu == null ? null : VideoEdit.thumb(this, vu, ms);
+            if (jpg == null) return notFound();
+            headers.put("Cache-Control", "max-age=86400");
+            return new WebResourceResponse("image/jpeg", null, 200, "OK", headers, new ByteArrayInputStream(jpg));
+        }
         if (path.startsWith("/__art/")) {
             try {
                 long albumId = Long.parseLong(path.substring("/__art/".length()));
@@ -212,6 +224,44 @@ public class MainActivity extends Activity implements Player.Listener {
             String enc = mime.startsWith("text/") || mime.endsWith("javascript") || mime.endsWith("json") ? "utf-8" : null;
             return new WebResourceResponse(mime, enc, 200, "OK", headers, in);
         } catch (IOException e) {
+            return notFound();
+        }
+    }
+
+    /** a video for the page's <video>, with byte ranges so it can seek */
+    private WebResourceResponse video(String uri, Map<String, String> req) {
+        if (uri == null || !uri.startsWith("content://")) return notFound();
+        try {
+            android.content.res.AssetFileDescriptor fd = getContentResolver().openAssetFileDescriptor(Uri.parse(uri), "r");
+            if (fd == null) return notFound();
+            long size = fd.getLength();
+            if (size < 0) size = fd.getParcelFileDescriptor().getStatSize();
+            InputStream in = fd.createInputStream();
+            String mime = getContentResolver().getType(Uri.parse(uri));
+            if (mime == null || !mime.startsWith("video/")) mime = "video/mp4";
+            Map<String, String> h = new HashMap<>();
+            h.put("Accept-Ranges", "bytes");
+            h.put("Cache-Control", "no-cache");
+            String range = null;
+            if (req != null) for (Map.Entry<String, String> e : req.entrySet()) if ("range".equalsIgnoreCase(e.getKey())) range = e.getValue();
+            long from = 0;
+            if (range != null && range.startsWith("bytes=")) {
+                try { from = Long.parseLong(range.substring(6, range.indexOf('-')).trim()); } catch (Exception ignored) { }
+            }
+            if (from > 0 && size > 0 && from < size) {
+                long left = from;
+                while (left > 0) { long k = in.skip(left); if (k <= 0) break; left -= k; }
+                h.put("Content-Range", "bytes " + from + "-" + (size - 1) + "/" + size);
+                h.put("Content-Length", String.valueOf(size - from));
+                return new WebResourceResponse(mime, null, 206, "Partial Content", h, in);
+            }
+            if (size > 0) h.put("Content-Length", String.valueOf(size));
+            if (range != null && size > 0) {
+                h.put("Content-Range", "bytes 0-" + (size - 1) + "/" + size);
+                return new WebResourceResponse(mime, null, 206, "Partial Content", h, in);
+            }
+            return new WebResourceResponse(mime, null, 200, "OK", h, in);
+        } catch (Exception e) {
             return notFound();
         }
     }
@@ -242,6 +292,10 @@ public class MainActivity extends Activity implements Player.Listener {
         return Build.VERSION.SDK_INT >= 33 ? Manifest.permission.READ_MEDIA_AUDIO : Manifest.permission.READ_EXTERNAL_STORAGE;
     }
 
+    private String videoPermission() {
+        return Build.VERSION.SDK_INT >= 33 ? "android.permission.READ_MEDIA_VIDEO" : Manifest.permission.READ_EXTERNAL_STORAGE;
+    }
+
     private void handleWebPermission(PermissionRequest request) {
         boolean audio = false;
         for (String r : request.getResources()) if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r)) audio = true;
@@ -270,7 +324,7 @@ public class MainActivity extends Activity implements Player.Listener {
             }
             js("window.__sdPerm && window.__sdPerm('mic'," + ok + ")");
         } else if (code == REQ_MEDIA) {
-            boolean ok = has(mediaPermission());
+            boolean ok = has(mediaPermission()) || has(videoPermission());
             boolean blocked = !ok && !shouldShowRequestPermissionRationale(mediaPermission());
             js("window.__sdPerm && window.__sdPerm('media'," + ok + "," + blocked + ")");
         }
@@ -287,8 +341,17 @@ public class MainActivity extends Activity implements Player.Listener {
         } else if (code == REQ_VIDEO) {
             Uri[] uris = result == RESULT_OK ? urisFrom(data) : null;
             if (uris != null && uris.length > 0) importVideos(uris);
-        } else if (code == REQ_VIDEO_TL) {
+        } else if (code == REQ_VIDEO_TL || code == REQ_VIDEO_V) {
             Uri[] uris = result == RESULT_OK ? urisFrom(data) : null;
+            if (uris != null) for (Uri v : uris) {
+                try { getContentResolver().takePersistableUriPermission(v, Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (Exception ignored) { }
+            }
+            if (code == REQ_VIDEO_V) {
+                JSONArray l = new JSONArray();
+                if (uris != null) for (Uri v : uris) l.put(v.toString());
+                js("window.__sdVids && window.__sdVids(" + l.toString() + ")");
+                return;
+            }
             js("window.__sdVideo && window.__sdVideo(" + (uris != null && uris.length > 0 ? q(uris[0].toString()) : "null") + ")");
         } else if (code == REQ_PICK) {
             Uri[] uris = result == RESULT_OK ? urisFrom(data) : null;
@@ -492,6 +555,7 @@ public class MainActivity extends Activity implements Player.Listener {
                 o.put("native", true);
                 o.put("sdk", Build.VERSION.SDK_INT);
                 o.put("media", has(mediaPermission()));
+                o.put("vmedia", has(videoPermission()));
                 o.put("mic", has(Manifest.permission.RECORD_AUDIO));
                 o.put("asr", Studio.asrAvailable());
                 o.put("sep", Separator.available());
@@ -533,8 +597,8 @@ public class MainActivity extends Activity implements Player.Listener {
         @JavascriptInterface public void requestMedia() {
             ui(new Runnable() {
                 @Override public void run() {
-                    if (has(mediaPermission())) { js("window.__sdPerm && window.__sdPerm('media',true,false)"); return; }
-                    requestPermissions(new String[]{mediaPermission()}, REQ_MEDIA);
+                    if (has(mediaPermission()) && has(videoPermission())) { js("window.__sdPerm && window.__sdPerm('media',true,false)"); return; }
+                    requestPermissions(Build.VERSION.SDK_INT >= 33 ? new String[]{mediaPermission(), videoPermission()} : new String[]{mediaPermission()}, REQ_MEDIA);
                 }
             });
         }
@@ -584,6 +648,19 @@ public class MainActivity extends Activity implements Player.Listener {
                     i.setType("video/*");
                     i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
                     try { startActivityForResult(i, REQ_VIDEO); } catch (Exception ignored) { }
+                }
+            });
+        }
+
+        /** videos for the video project; the answer comes back through window.__sdVids */
+        @JavascriptInterface public void pickVideos() {
+            ui(new Runnable() {
+                @Override public void run() {
+                    Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                    i.addCategory(Intent.CATEGORY_OPENABLE);
+                    i.setType("video/*");
+                    i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                    try { startActivityForResult(i, REQ_VIDEO_V); } catch (Exception ignored) { js("window.__sdVids && window.__sdVids([])"); }
                 }
             });
         }
@@ -778,7 +855,7 @@ public class MainActivity extends Activity implements Player.Listener {
             jobs.put(id, cancel);
             boolean bg = false;
             try { bg = new JSONObject(argsJson).optBoolean("bg", false); } catch (Exception ignored) { }
-            final boolean heavy = !"peaks".equals(kind) && !"commit".equals(kind) && !"wsClean".equals(kind) && !"tlClean".equals(kind) && !"roomTest".equals(kind) && !"loudness".equals(kind) && !"asrStatus".equals(kind) && !"asrDelete".equals(kind);
+            final boolean heavy = !"peaks".equals(kind) && !"commit".equals(kind) && !"wsClean".equals(kind) && !"tlClean".equals(kind) && !"roomTest".equals(kind) && !"loudness".equals(kind) && !"asrStatus".equals(kind) && !"asrDelete".equals(kind) && !"vList".equals(kind) && !"vInfo".equals(kind);
             if (heavy) WorkService.begin(MainActivity.this);
             (bg ? bgPool : heavy || "wsClean".equals(kind) || "tlClean".equals(kind) ? studioPool : pool).execute(new Runnable() {
                 @Override
@@ -847,6 +924,14 @@ public class MainActivity extends Activity implements Player.Listener {
                             res = Separator.split(MainActivity.this, a, p, cancel);
                         } else if ("tlRender".equals(kind)) {
                             res = Timeline.render(MainActivity.this, a, p, cancel);
+                        } else if ("vList".equals(kind)) {
+                            res = VideoEdit.list(MainActivity.this, has(videoPermission()));
+                        } else if ("vInfo".equals(kind)) {
+                            res = VideoEdit.info(MainActivity.this, a.getString("uri"));
+                        } else if ("vRender".equals(kind)) {
+                            res = VideoEdit.render(MainActivity.this, a, p, cancel);
+                        } else if ("vSound".equals(kind)) {
+                            res = VideoEdit.soundJob(MainActivity.this, a, p, cancel);
                         } else if ("tlVideo".equals(kind)) {
                             res = VideoMux.run(MainActivity.this, a, p, cancel);
                         } else if ("tlClean".equals(kind)) {
