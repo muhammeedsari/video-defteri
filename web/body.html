@@ -201,6 +201,8 @@
 <script src="i18n16.js"></script>
 <script src="i18n17.js"></script>
 <script src="i18n18.js"></script>
+<script src="i18n19.js"></script>
+<script type="application/json" id="vPresets" src="presets.json"></script>
 <script>
 (() => {
 'use strict';
@@ -211,7 +213,7 @@ const IN_FRAME = (() => { try { return window.self !== window.top; } catch (e) {
 const AND = (() => { try { return window.SesDefteriAndroid || null; } catch (e) { return null; } })();
 const CAPS = (() => { try { return AND && AND.caps ? JSON.parse(AND.caps()) : {}; } catch (e) { return {}; } })();
 const NATIVE = !!(AND && CAPS.native);
-const VERSION = '0.3';
+const VERSION = '0.4';
 const ls = {
   get(k, d) { try { const v = localStorage.getItem('sd:' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem('sd:' + k, JSON.stringify(v)); } catch (e) {} }
@@ -4371,9 +4373,46 @@ function openFeedback() {
 }
 
 /* ---------- Video Defteri: video tab (cut list, native preview, sound, subtitles, export) ---------- */
-const VP = { p: null, sel: null, lib: null, libBusy: false, pos: 0, play: false, raf: 0, busy: null, undo: [], prox: null, proxP: 0, cleaned: false };
-const vNew = () => ({ name: '', clips: [], px: {}, sound: 'orig', sig: '', subs: null, burn: true });
-function vLoad() { const p = ls.get('vproj', null); VP.p = Object.assign(vNew(), p && Array.isArray(p.clips) ? p : {}); if (!VP.p.px) VP.p.px = {}; }
+const VP = { p: null, sel: null, lib: null, libBusy: false, pos: 0, play: false, raf: 0, busy: null, undo: [], prox: null, proxP: 0, cleaned: false, dirty: false, last: '' };
+/* frames, length limits and safe areas per platform: presets.json, put into the page when it is built */
+const VPRE = (() => { try { return JSON.parse(document.getElementById('vPresets').textContent); } catch (e) { return { orig: { ar: 0 } }; } })();
+const vNew = preset => ({ v: 1, id: uid(), name: '', created: Date.now(), updated: 0, preset: preset || 'orig', bg: '#000000', blur: false, safe: true, clips: [], px: {}, sound: 'orig', sig: '', subs: null, burn: true });
+const vPre = () => VPRE[VP.p.preset] || VPRE.orig || { ar: 0 };
+const vPreName = k => VPRE[k] && VPRE[k].name ? VPRE[k].name : t('vPre_' + k);
+/* ----- projects: one file each (files/projects/<id>/project.json), saved 2 s after a change and when the app goes away ----- */
+function vFix(p) { p = Object.assign(vNew(), p && Array.isArray(p.clips) ? p : {}); if (!p.px) p.px = {}; return p; }
+function vLoad() {
+  let p = null;
+  const cur = ls.get('vcur', '');
+  if (cur) { try { const j = AND.vProjGet(cur); if (j) p = JSON.parse(j); } catch (e) {} }
+  if (!p) { try { const l = JSON.parse(AND.vProjList()); if (l[0]) p = JSON.parse(AND.vProjGet(l[0].id) || 'null'); } catch (e) {} }
+  if (!p) { p = ls.get('vproj', null); if (p) p.id = uid(); }   // 0.2–0.3 kept the one project in the page's storage
+  vSet(vFix(p));
+  try { localStorage.removeItem('sd:vproj'); } catch (e) {}
+}
+/** makes p the open project (its studio sound becomes the studio's project) */
+function vSet(p) {
+  VP.p = p; VP.undo = []; VP.sel = null; VP.pos = 0; VP.last = ''; VP.dirty = true;
+  ls.set('vcur', p.id);
+  if (p.sound === 'studio' && p.tl) { TL.p = p.tl; TL.undo = []; TL.redo = []; TL.sel = null; TL.pos = 0; ls.set('proj', TL.p); }
+  vFlush();
+}
+function vFlush() {
+  if (!VP.p || !AND) return;
+  const p = VP.p;
+  if (p.sound === 'studio' && TL.p) p.tl = TL.p; else if (p.sound !== 'studio') delete p.tl;
+  const f = p.clips[0];
+  p.meta = { dur: vTotal(), n: p.clips.length, cover: f ? { uri: f.uri, t: f.in + 0.5 } : null, uris: [...new Set(p.clips.map(c => c.uri))] };
+  const u = p.updated; p.updated = 0;
+  const s = JSON.stringify(p);
+  p.updated = u;
+  VP.dirty = false;
+  if (s === VP.last) return;
+  p.updated = Date.now();
+  try { if (AND.vProjPut(p.id, JSON.stringify(p))) VP.last = s; } catch (e) {}
+}
+setInterval(() => { if (VP.p && (VP.dirty || VP.p.sound === 'studio')) vFlush(); }, 2000);
+addEventListener('pagehide', vFlush);
 const vLen = c => c.out - c.in;
 /** where each clip starts: right after the one before, overlapping it by its fade-in */
 function vPlace() {
@@ -4389,7 +4428,7 @@ const vSig = () => VP.p.clips.map(c => c.uri + '@' + c.in.toFixed(2) + '-' + c.o
 const vThumb = (uri, s) => '/__thumb?u=' + encodeURIComponent(uri) + '&t=' + Math.round((s || 0) * 1000);
 const vSel = () => VP.p.clips.find(c => c.id === VP.sel) || null;
 const vPx = c => VP.p.px[c.uri] || null;
-function vSave() { ls.set('vproj', VP.p); }
+function vSave() { VP.dirty = true; }
 function vCommit(before) {
   if (before !== JSON.stringify(VP.p)) { VP.undo.push(before); if (VP.undo.length > 40) VP.undo.shift(); }
   vPlace(); vSave();
@@ -4406,7 +4445,11 @@ function vAt(T) {
 
 /* ----- native preview (VideoEngine): the page keeps a box free, the phone draws into it ----- */
 function vSync() {
-  try { AND.vSet(JSON.stringify({ clips: VP.p.clips.map(c => { const x = vPx(c); return { id: c.id, src: x ? x.v : '', at: c.at, in: c.in, out: c.out, tx: c.ftx || 0 }; }) })); } catch (e) {}
+  const pr = vPre();
+  try {
+    AND.vSet(JSON.stringify({ bg: VP.p.bg, blur: !!VP.p.blur, clips: VP.p.clips.map(c => { const x = vPx(c); return { id: c.id, src: x ? x.v : '', at: c.at, in: c.in, out: c.out, tx: c.ftx || 0 }; }) }));
+    AND.vSafe(VP.p.safe !== false && pr.safe ? JSON.stringify(pr.safe) : '');
+  } catch (e) {}
 }
 var vRectQ = 0;
 function vRect() {
@@ -4445,9 +4488,11 @@ function renderVideo() {
   const cl = VP.p.clips, empty = !cl.length, c = vSel(), dis = VP.busy ? ' disabled' : '';
   const b = (k, icn, lab) => `<button class="tool" type="button" data-v="${k}"${dis}>${ic(icn)}${esc(lab)}</button>`;
   const stale = VP.p.sound === 'studio' && VP.p.sig !== vSig();
-  const f = cl.find(vPx), ar = f ? vPx(f).w / vPx(f).h : 16 / 9;
+  const pr = vPre(), f = cl.find(vPx), ar = pr.ar > 0 ? pr.ar : f ? vPx(f).w / vPx(f).h : 16 / 9;
   const ci = c ? cl.indexOf(c) : -1;
-  box.innerHTML = `<div class="v-stage" id="vStage" style="aspect-ratio:${ar.toFixed(4)};width:min(100%,calc(55vh * ${ar.toFixed(4)}))">${empty ? `<div class="v-ph">${ic('film', 1.6)}<b>${esc(t('vEmpty'))}</b><span>${esc(t('vEmptyD'))}</span></div>` : ''}</div>
+  box.innerHTML = `<div class="v-head"><button type="button" class="v-name" data-v="rename"${dis}><b>${esc(VP.p.name || t('vUntitled'))}</b><span>${esc(vPreName(VP.p.preset))}</span></button>
+      <button class="btn sm" type="button" data-v="canvas"${dis}>${ic('film')}${esc(t('vCanvas'))}</button><button class="btn sm" type="button" data-v="projects"${dis}>${ic('folder')}${esc(t('vProjects'))}</button></div>
+    <div class="v-stage" id="vStage" style="aspect-ratio:${ar.toFixed(4)};width:min(100%,calc(55vh * ${ar.toFixed(4)}))">${empty ? `<div class="v-ph">${ic('film', 1.6)}<b>${esc(t('vEmpty'))}</b><span>${esc(t('vEmptyD'))}</span></div>` : ''}</div>
     ${empty ? '' : `<div class="v-ctl"><button class="ctl" type="button" data-v="play" id="vPlay" style="width:48px;height:48px">${ic(VP.play ? 'pause' : 'play')}</button>
       <input type="range" id="vSeek" min="0" max="${vTotal().toFixed(2)}" step="0.02" value="${VP.pos.toFixed(2)}" aria-label="${esc(t('vSeek'))}"><span class="tc" id="vTime"></span></div>`}
     ${VP.prox ? `<p class="hint">${esc(t('vProxying', { p: Math.round(VP.proxP * 100) }))}</p>` : ''}
@@ -4456,9 +4501,10 @@ function renderVideo() {
       <button type="button" class="v-clip v-add" data-v="pick"${dis}>${ic('plus', 1.6)}</button></div>
     <div class="tl-bar">${c
       ? b('done', 'check', t('tlDone')) + b('trim', 'scissors', t('vTrim')) + b('split', 'scissors', t('tlSplit')) + (ci > 0 ? `<button class="tool" type="button" data-v="fade" aria-pressed="${!!c.tx}"${dis}>${ic('spark')}${esc(t('vFade'))}</button>` : '') + b('left', 'back', t('vLeft')) + b('right', 'next', t('vRight')) + b('dup', 'copy', t('tlDup')) + b('del', 'trash', t('tlDelete'))
-      : b('pick', 'import', t('vAdd')) + (empty ? '' : b('studio', 'mixer', t('vStudio')) + b('music', 'note', t('vMusic')) + b('subs', 'textic', t('vSubs')) + (VP.undo.length ? b('undo', 'undo', t('undo')) : '') + b('new', 'trash', t('tlNewP')))}</div>
+      : b('pick', 'import', t('vAdd')) + (empty ? '' : b('studio', 'mixer', t('vStudio')) + b('music', 'note', t('vMusic')) + b('subs', 'textic', t('vSubs'))) + (VP.undo.length ? b('undo', 'undo', t('undo')) : '')}</div>
     ${empty ? '' : `<div class="v-info">
       <p>${ic('wave')}<span>${esc(t(VP.p.sound === 'studio' ? 'vSoundStudio' : 'vSoundOrig'))}</span>${VP.p.sound === 'studio' ? `<button class="btn sm" type="button" data-v="toOrig"${dis}>${esc(t('vSoundReset'))}</button>` : ''}</p>
+      ${pr.max && vTotal() > pr.max + 0.5 ? `<p class="v-warn">${esc(t('vTooLong', { p: vPreName(VP.p.preset), t: fmt(pr.max) }))}</p>` : ''}
       ${stale ? `<p class="v-warn">${esc(t('vStale'))} <button class="btn sm" type="button" data-v="rebuild"${dis}>${esc(t('vRebuild'))}</button></p>` : ''}
       ${VP.p.subs ? `<p>${ic('textic')}<span>${esc(t('vSubsN', { n: VP.p.subs.length }))}</span><button class="btn sm" type="button" data-v="subEdit"${dis}>${esc(t('edit'))}</button></p>` : ''}
       <button class="btn primary v-export" type="button" data-v="export"${dis}>${ic('share')}${esc(t('vExport'))} · ${fmt(vTotal())}</button></div>`}
@@ -4677,6 +4723,79 @@ function vSubEdit() {
   card.querySelector('[data-ok]').onclick = () => { VP.p.subs = read(); VP.p.burn = card.querySelector('#vsBurn').checked; vSave(); closeModal(); renderVideo(); };
 }
 
+/* ----- project list, new project (platform preset), frame and background ----- */
+function vOpen(p) {
+  vFlush(); vPause();
+  vSet(vFix(p)); vPlace(); vSync(); renderVideo(); vSeekTo(0); vProxies();
+}
+async function vCreate() {
+  const k = await chooseBox(t('tlNewP'), t('vPreD'), Object.keys(VPRE).map(k => ({ value: k, label: vPreName(k), desc: vPreDesc(k) })));
+  if (!k) return false;
+  const p = vNew(k); p.name = t('vProjN', { d: new Date().toLocaleDateString(LANG, { day: 'numeric', month: 'short' }) });
+  vOpen(p);
+  return true;
+}
+function vPreDesc(k) {
+  const x = VPRE[k] || {};
+  if (!x.ar) return t('vPre_origD');
+  const w = x.ar > 1 ? 1920 : 1080, h = Math.round(w / x.ar);
+  return w + '×' + h + (x.max ? ' · ' + t('vMax', { t: fmt(x.max) }) : '');
+}
+function vProjects() {
+  vFlush();
+  let list = [];
+  try { list = JSON.parse(AND.vProjList()); } catch (e) {}
+  const card = openModal(`<h3>${esc(t('vProjects'))}</h3><div class="modal-body v-projs">
+      <button class="btn primary" type="button" data-pn>${ic('plus')}${esc(t('tlNewP'))}</button>
+      ${list.map((x, i) => { const m = x.meta || {}; return `<div class="v-proj${x.id === VP.p.id ? ' on' : ''}"><button type="button" class="v-pmain" data-po="${i}">${m.cover ? `<img loading="lazy" alt="" src="${esc(vThumb(m.cover.uri, m.cover.t))}">` : `<i>${ic('film', 1.4)}</i>`}
+        <span><b>${esc(x.name || t('vUntitled'))}</b><small>${esc(fmt(m.dur || 0) + ' · ' + vPreName(x.preset) + ' · ' + new Date(x.updated || 0).toLocaleDateString(LANG))}</small></span></button>
+        <button class="icon-btn" type="button" data-pd="${i}" aria-label="${esc(t('tlDup'))}">${ic('copy')}</button><button class="icon-btn" type="button" data-px="${i}" aria-label="${esc(t('delete'))}">${ic('trash')}</button></div>`; }).join('')}</div>
+    <div class="modal-actions"><span class="spacer"></span><button class="btn" type="button" data-x>${esc(t('ok'))}</button></div>`);
+  const get = i => { try { return JSON.parse(AND.vProjGet(list[i].id) || 'null'); } catch (e) { return null; } };
+  card.onclick = async e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.matches('[data-x]')) closeModal();
+    else if (b.matches('[data-pn]')) { closeModal(); vCreate(); }
+    else if (b.dataset.po != null) { const p = list[+b.dataset.po].id === VP.p.id ? null : get(+b.dataset.po); closeModal(); if (p) vOpen(p); }
+    else if (b.dataset.pd != null) { const p = get(+b.dataset.pd); if (!p) return; p.id = uid(); p.name = (p.name || t('vUntitled')) + ' 2'; p.created = p.updated = Date.now(); try { AND.vProjPut(p.id, JSON.stringify(p)); } catch (x) {} closeModal(); vProjects(); }
+    else if (b.dataset.px != null) {
+      const x = list[+b.dataset.px]; closeModal();
+      if (!(await confirmBox({ title: t('vDelQ'), text: t('vDelB', { n: x.name || t('vUntitled') }), ok: t('delete'), danger: true }))) { vProjects(); return; }
+      try { AND.vProjDel(x.id); } catch (y) {}
+      if (x.id === VP.p.id) { VP.last = ''; let n = null; try { const l = JSON.parse(AND.vProjList()); if (l[0]) n = JSON.parse(AND.vProjGet(l[0].id) || 'null'); } catch (y) {} vPause(); vSet(vFix(n)); vPlace(); vSync(); renderVideo(); vProxies(); }
+      VP.cleaned = false;
+      vProjects();
+    }
+  };
+}
+const V_BG = ['#000000', '#ffffff', '#1d6e5a', '#f2b83d', '#e5484d', '#3e63dd', '#8e4ec6', '#2b2b2b'];
+function vCanvas() {
+  const before = JSON.stringify(VP.p);
+  const card = openModal(`<h3>${esc(t('vCanvas'))}</h3><div class="modal-body">
+      <div class="v-pres">${Object.keys(VPRE).map(k => `<button type="button" data-cp="${k}" aria-pressed="${k === VP.p.preset}"><b>${esc(vPreName(k))}</b><small>${esc(vPreDesc(k))}</small></button>`).join('')}</div>
+      <p class="st-desc"><b>${esc(t('vBg'))}</b></p>
+      <div class="v-bgs">${V_BG.map(c => `<button type="button" data-cb="${c}" style="background:${c}" aria-pressed="${!VP.p.blur && VP.p.bg === c}" aria-label="${c}"></button>`).join('')}<label class="v-bgc" aria-label="${esc(t('vBgPick'))}"><input type="color" id="vBgC" value="${esc(VP.p.bg)}"></label></div>
+      <label class="switch"><input type="checkbox" id="vBlur"${VP.p.blur ? ' checked' : ''}><span>${esc(t('vBlur'))}<small>${esc(t('vBlurD'))}</small></span></label>
+      <label class="switch"><input type="checkbox" id="vSafeOn"${VP.p.safe !== false ? ' checked' : ''}><span>${esc(t('vSafe'))}<small>${esc(t('vSafeD'))}</small></span></label></div>
+    <div class="modal-actions"><span class="spacer"></span><button class="btn primary" type="button" data-x>${esc(t('ok'))}</button></div>`,
+    () => { if (before !== JSON.stringify(VP.p)) { VP.undo.push(before); vSave(); } renderVideo(); });
+  const upd = () => {
+    card.querySelectorAll('[data-cp]').forEach(b => b.setAttribute('aria-pressed', b.dataset.cp === VP.p.preset));
+    card.querySelectorAll('[data-cb]').forEach(b => b.setAttribute('aria-pressed', !VP.p.blur && b.dataset.cb === VP.p.bg));
+    vSync(); renderVideo();
+  };
+  card.onclick = e => {
+    const b = e.target.closest('[data-cp],[data-cb],[data-x]'); if (!b) return;
+    if (b.matches('[data-x]')) { closeModal(); return; }
+    if (b.dataset.cp) VP.p.preset = b.dataset.cp;
+    else { VP.p.bg = b.dataset.cb; VP.p.blur = false; card.querySelector('#vBlur').checked = false; }
+    upd();
+  };
+  card.querySelector('#vBgC').oninput = e => { VP.p.bg = e.target.value; VP.p.blur = false; card.querySelector('#vBlur').checked = false; upd(); };
+  card.querySelector('#vBlur').onchange = e => { VP.p.blur = e.target.checked; upd(); };
+  card.querySelector('#vSafeOn').onchange = e => { VP.p.safe = e.target.checked; upd(); };
+}
+
 /* ----- export ----- */
 async function vExport() {
   if (!VP.p.clips.length || VP.busy) return;
@@ -4686,10 +4805,11 @@ async function vExport() {
     if (!v) return;
     if (v === 'rb' && !(await vToStudio(true))) return;
   }
-  const q = await chooseBox(t('vExport'), t('vExportD'), [
-    { value: '0', label: t('vQOrig'), desc: t('vQOrigD') }, { value: '1080', label: '1080p', desc: t('vQ1080D') }, { value: '720', label: '720p', desc: t('vQ720D') }]);
+  const ar = vPre().ar || 0;
+  const q = await chooseBox(t('vExport'), t('vExportD'), (ar ? [] : [{ value: '0', label: t('vQOrig'), desc: t('vQOrigD') }]).concat([
+    { value: '1080', label: '1080p', desc: t('vQ1080D') }, { value: '720', label: '720p', desc: t('vQ720D') }]));
   if (q == null) return;
-  const a = Object.assign(vArgs(), { q: +q, name: fileName(VP.p.name || t('tabVideo'), 'edit') });
+  const a = Object.assign(vArgs(), { q: +q, ar, bg: VP.p.bg, blur: !!VP.p.blur, name: fileName(VP.p.name || t('tabVideo'), 'edit') });
   if (VP.p.subs && VP.p.subs.length && VP.p.burn !== false) a.subs = VP.p.subs.filter(s => s[2]);
   const t0 = Date.now();
   try {
@@ -4720,7 +4840,9 @@ $('#videoTab').addEventListener('click', async e => {
   else if (k === 'dup') { const c = vSel(); if (!c) return; const before = JSON.stringify(VP.p); const i = VP.p.clips.indexOf(c); const d = Object.assign({}, c, { id: uid(), tx: 0 }); VP.p.clips.splice(i + 1, 0, d); VP.sel = d.id; vCommit(before); vSync(); }
   else if (k === 'del') { const c = vSel(); if (!c) return; const before = JSON.stringify(VP.p); VP.p.clips = VP.p.clips.filter(x => x !== c); VP.sel = null; vCommit(before); vSync(); }
   else if (k === 'undo') { if (!VP.undo.length) return; vPause(); VP.p = JSON.parse(VP.undo.pop()); VP.sel = null; vPlace(); vSave(); vSync(); renderVideo(); vSeekTo(VP.pos); }
-  else if (k === 'new') { if (await confirmBox({ title: t('tlNewQ'), text: t('vNewB'), ok: t('tlNewP'), danger: true })) { vPause(); VP.undo.push(JSON.stringify(VP.p)); VP.p = vNew(); VP.sel = null; VP.pos = 0; vSave(); vSync(); renderVideo(); } }
+  else if (k === 'projects') vProjects();
+  else if (k === 'canvas') vCanvas();
+  else if (k === 'rename') { const n = await promptBox(t('vRename'), VP.p.name || ''); if (n) { VP.p.name = n; vSave(); renderVideo(); } }
   else if (k === 'studio') vStudio();
   else if (k === 'music') vMusic();
   else if (k === 'subs') vSubs();
@@ -4729,7 +4851,7 @@ $('#videoTab').addEventListener('click', async e => {
   else if (k === 'toOrig') { if (await confirmBox({ title: t('vSoundReset'), text: t('vSoundResetB'), ok: t('ok') })) { vPause(); VP.p.sound = 'orig'; vSave(); renderVideo(); } }
   else if (k === 'export') vExport();
 });
-document.addEventListener('visibilitychange', () => { if (document.hidden) vPause(); vRect(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) { vPause(); vFlush(); } vRect(); });
 
 /* ---------- boot ---------- */
 let booted = false;

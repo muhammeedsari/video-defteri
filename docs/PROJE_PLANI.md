@@ -289,3 +289,10 @@ Uygulama içi çekim + teleprompter, platform güvenli alanlarının otomatik g�
 - Geçiş: klip başına `tx` (0 / 0,5 sn), klipler birbirinin üstüne biner; ses de aynı sürede çapraz geçer.
 - Proje hâlâ localStorage `vproj`'da; dosyaya taşıma Aşama 1'de.
 - Kabul ölçütleri telefonda bekleniyor; karar satırı ölçümden sonra yazılacak.
+
+## 10. 0.4 notları (25 Ekim 2026) — proje temeli
+- Projeler `files/projects/<id>/project.json` (geçici dosyaya yazılıp yeniden adlandırılır; yarım yazma eski kaydı bozmaz). Köprü: `AND.vProjList/vProjGet/vProjPut/vProjDel`. Açık proje kimliği localStorage `vcur`'da; eski `vproj` ilk açılışta dosyaya taşınır.
+- Otomatik kayıt: değişiklikten en geç 2 sn sonra (zamanlayıcı + değişmediyse yazmaz) ve uygulama arka plana geçince hemen. Stüdyo sesi kullanan projede stüdyo projesi `tl` alanında birlikte saklanır, proje açılınca stüdyoya geri yüklenir.
+- Ön ayarlar `web/presets.json` (derlemede sayfaya gömülür): `ar` (en/boy), `max` (sn, aşılırsa uyarı), `safe` (üst, sağ, alt, sol oranları). Değerleri değiştirmek için yalnız bu dosya düzenlenir.
+- Tuval: önizleme kutusu ön ayarın oranında; motor (`Comp.look`) boşlukları arka plan rengiyle ya da bulanık arka planla (klip 96 px'lik kareye doldurulur, 4 geçişli gauss, büyütülür, %70 parlaklık) doldurur. Dışa aktarma aynı çizimi kullanır; ön ayarlı projede kısa kenar 1080/720, "olduğu gibi kopyala" yalnız "İlk video gibi"de.
+- Güvenli alan çizgileri yalnız önizlemede (TextureView'in üstünde ayrı bir View), dışa aktarılan videoya girmez.

@@ -1,0 +1,42 @@
+/* Video Defteri 0.4 — projects, frame presets, background (merged into SD_I18N). */
+(function () {
+const A = {
+tr: { vUntitled: "Adsız proje", vCanvas: "Boyut", vProjects: "Projeler", vRename: "Proje adı", vTooLong: "{p} için {t} sınırını aşıyor.", vPreD: "Video nerede paylaşılacak? Boyutu sonra da değiştirebilirsin.",
+  vProjN: "Proje {d}", vMax: "en çok {t}", vDelQ: "Proje silinsin mi?", vDelB: "\"{n}\" silinir. Telefondaki videolar silinmez.", vBg: "Arka plan", vBgPick: "Renk seç",
+  vBlur: "Bulanık arka plan", vBlurD: "Boşlukları videonun bulanık hâli doldurur", vSafe: "Güvenli alan çizgileri", vSafeD: "Yazıları çizginin içinde tut; dışını uygulamanın düğmeleri kapatabilir",
+  vPre_orig: "İlk video gibi", vPre_origD: "İlk videonun boyutu", vPre_igfeed: "Instagram akış", vPre_square: "Kare" },
+en: { vUntitled: "Untitled project", vCanvas: "Frame", vProjects: "Projects", vRename: "Project name", vTooLong: "Longer than the {t} limit for {p}.", vPreD: "Where will the video be shared? You can change the frame later.",
+  vProjN: "Project {d}", vMax: "up to {t}", vDelQ: "Delete the project?", vDelB: "\"{n}\" is deleted. The videos on the phone stay.", vBg: "Background", vBgPick: "Pick a colour",
+  vBlur: "Blurred background", vBlurD: "A blurred copy of the video fills the gaps", vSafe: "Safe area lines", vSafeD: "Keep text inside; the app's buttons may cover the rest",
+  vPre_orig: "Like the first video", vPre_origD: "The first video's size", vPre_igfeed: "Instagram feed", vPre_square: "Square" },
+de: { vUntitled: "Unbenanntes Projekt", vCanvas: "Format", vProjects: "Projekte", vRename: "Projektname", vTooLong: "Länger als das Limit von {t} für {p}.", vPreD: "Wo wird das Video geteilt? Das Format lässt sich später ändern.",
+  vProjN: "Projekt {d}", vMax: "bis {t}", vDelQ: "Projekt löschen?", vDelB: "„{n}“ wird gelöscht. Die Videos auf dem Handy bleiben.", vBg: "Hintergrund", vBgPick: "Farbe wählen",
+  vBlur: "Unscharfer Hintergrund", vBlurD: "Eine unscharfe Kopie des Videos füllt die Ränder", vSafe: "Linien für den sicheren Bereich", vSafeD: "Text innen halten; außen können Tasten der App liegen",
+  vPre_orig: "Wie das erste Video", vPre_origD: "Größe des ersten Videos", vPre_igfeed: "Instagram-Feed", vPre_square: "Quadrat" },
+fr: { vUntitled: "Projet sans titre", vCanvas: "Format", vProjects: "Projets", vRename: "Nom du projet", vTooLong: "Dépasse la limite de {t} pour {p}.", vPreD: "Où la vidéo sera-t-elle partagée ? Le format peut changer plus tard.",
+  vProjN: "Projet {d}", vMax: "jusqu’à {t}", vDelQ: "Supprimer le projet ?", vDelB: "« {n} » est supprimé. Les vidéos du téléphone restent.", vBg: "Arrière-plan", vBgPick: "Choisir une couleur",
+  vBlur: "Arrière-plan flou", vBlurD: "Une copie floue de la vidéo remplit les bords", vSafe: "Lignes de zone sûre", vSafeD: "Gardez le texte à l’intérieur ; les boutons de l’appli peuvent couvrir le reste",
+  vPre_orig: "Comme la première vidéo", vPre_origD: "Taille de la première vidéo", vPre_igfeed: "Fil Instagram", vPre_square: "Carré" },
+es: { vUntitled: "Proyecto sin título", vCanvas: "Formato", vProjects: "Proyectos", vRename: "Nombre del proyecto", vTooLong: "Supera el límite de {t} de {p}.", vPreD: "¿Dónde se compartirá el vídeo? Puedes cambiar el formato después.",
+  vProjN: "Proyecto {d}", vMax: "hasta {t}", vDelQ: "¿Eliminar el proyecto?", vDelB: "Se elimina «{n}». Los vídeos del teléfono se quedan.", vBg: "Fondo", vBgPick: "Elegir color",
+  vBlur: "Fondo desenfocado", vBlurD: "Una copia desenfocada del vídeo llena los huecos", vSafe: "Líneas de zona segura", vSafeD: "Mantén el texto dentro; los botones de la app pueden tapar el resto",
+  vPre_orig: "Como el primer vídeo", vPre_origD: "Tamaño del primer vídeo", vPre_igfeed: "Feed de Instagram", vPre_square: "Cuadrado" },
+pt: { vUntitled: "Projeto sem título", vCanvas: "Formato", vProjects: "Projetos", vRename: "Nome do projeto", vTooLong: "Passa do limite de {t} do {p}.", vPreD: "Onde o vídeo será partilhado? Pode mudar o formato depois.",
+  vProjN: "Projeto {d}", vMax: "até {t}", vDelQ: "Apagar o projeto?", vDelB: "\"{n}\" é apagado. Os vídeos do telemóvel ficam.", vBg: "Fundo", vBgPick: "Escolher cor",
+  vBlur: "Fundo desfocado", vBlurD: "Uma cópia desfocada do vídeo preenche os espaços", vSafe: "Linhas da área segura", vSafeD: "Mantenha o texto dentro; os botões da app podem tapar o resto",
+  vPre_orig: "Como o primeiro vídeo", vPre_origD: "Tamanho do primeiro vídeo", vPre_igfeed: "Feed do Instagram", vPre_square: "Quadrado" },
+ru: { vUntitled: "Проект без названия", vCanvas: "Формат", vProjects: "Проекты", vRename: "Название проекта", vTooLong: "Дольше лимита {t} для {p}.", vPreD: "Где будет опубликовано видео? Формат можно сменить позже.",
+  vProjN: "Проект {d}", vMax: "до {t}", vDelQ: "Удалить проект?", vDelB: "«{n}» будет удалён. Видео на телефоне останутся.", vBg: "Фон", vBgPick: "Выбрать цвет",
+  vBlur: "Размытый фон", vBlurD: "Пустые края заполняет размытая копия видео", vSafe: "Линии безопасной зоны", vSafeD: "Держите текст внутри: снаружи его могут закрыть кнопки приложения",
+  vPre_orig: "Как первое видео", vPre_origD: "Размер первого видео", vPre_igfeed: "Лента Instagram", vPre_square: "Квадрат" },
+ar: { vUntitled: "مشروع بلا عنوان", vCanvas: "المقاس", vProjects: "المشاريع", vRename: "اسم المشروع", vTooLong: "أطول من حد {t} في {p}.", vPreD: "أين ستنشر الفيديو؟ يمكنك تغيير المقاس لاحقًا.",
+  vProjN: "مشروع {d}", vMax: "حتى {t}", vDelQ: "حذف المشروع؟", vDelB: "سيُحذف \"{n}\". تبقى مقاطع الفيديو على الهاتف.", vBg: "الخلفية", vBgPick: "اختر لونًا",
+  vBlur: "خلفية ضبابية", vBlurD: "نسخة ضبابية من الفيديو تملأ الفراغات", vSafe: "خطوط المنطقة الآمنة", vSafeD: "أبقِ النص داخلها؛ قد تغطي أزرار التطبيق ما خارجها",
+  vPre_orig: "مثل الفيديو الأول", vPre_origD: "مقاس الفيديو الأول", vPre_igfeed: "موجز إنستغرام", vPre_square: "مربع" },
+zh: { vUntitled: "未命名项目", vCanvas: "画幅", vProjects: "项目", vRename: "项目名称", vTooLong: "超过 {p} 的 {t} 时长限制。", vPreD: "视频要发布到哪里？之后也可以更改画幅。",
+  vProjN: "项目 {d}", vMax: "最长 {t}", vDelQ: "删除项目？", vDelB: "将删除“{n}”。手机里的视频不会删除。", vBg: "背景", vBgPick: "选择颜色",
+  vBlur: "模糊背景", vBlurD: "用视频的模糊副本填充空白", vSafe: "安全区线", vSafeD: "文字请放在线内，线外可能被应用按钮遮挡",
+  vPre_orig: "与第一个视频相同", vPre_origD: "第一个视频的尺寸", vPre_igfeed: "Instagram 动态", vPre_square: "方形" }
+};
+for (const l in A) window.SD_I18N[l] = Object.assign(window.SD_I18N[l] || {}, A[l]);
+})();

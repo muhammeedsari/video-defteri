@@ -60,6 +60,14 @@ final class VideoEngine {
         + "uniform samplerExternalOES uS; uniform float uA; void main() { gl_FragColor = vec4(texture2D(uS, vC).rgb, uA); }";
     private static final String FS_2D = "precision mediump float; varying vec2 vC; uniform sampler2D uS; uniform float uA;"
         + "void main() { gl_FragColor = texture2D(uS, vC) * uA; }";
+    /** 9 taps along uD (one direction of a gaussian), rgb scaled by uA */
+    private static final String FS_BLUR = "precision mediump float; varying vec2 vC; uniform sampler2D uS; uniform float uA; uniform vec2 uD;"
+        + "void main() { vec3 c = texture2D(uS, vC).rgb * 0.227;"
+        + " c += (texture2D(uS, vC + uD).rgb + texture2D(uS, vC - uD).rgb) * 0.195;"
+        + " c += (texture2D(uS, vC + 2.0 * uD).rgb + texture2D(uS, vC - 2.0 * uD).rgb) * 0.122;"
+        + " c += (texture2D(uS, vC + 3.0 * uD).rgb + texture2D(uS, vC - 3.0 * uD).rgb) * 0.054;"
+        + " c += (texture2D(uS, vC + 4.0 * uD).rgb + texture2D(uS, vC - 4.0 * uD).rgb) * 0.016;"
+        + " gl_FragColor = vec4(c * uA, 1.0); }";
     private static final float[] QUAD = { -1, -1, 0, 0, 1, -1, 1, 0, -1, 1, 0, 1, 1, 1, 1, 1 };
     private static final float[] FLIP = { 1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1 };   // bitmap rows run downwards
     private static final float[] ID = new float[16];
@@ -71,7 +79,8 @@ final class VideoEngine {
         EGLContext ctx;
         EGLConfig cfg;
         EGLSurface pbuf;
-        int progOes, prog2d;
+        int progOes, prog2d, progBlur;
+        float dx, dy;   // uD of the blur
         FloatBuffer quad;
 
         Gl() {
@@ -90,6 +99,7 @@ final class VideoEngine {
             if (ctx == null || pbuf == null || !EGL14.eglMakeCurrent(dpy, pbuf, pbuf, ctx)) throw new IllegalStateException("egl");
             progOes = program(VS, FS_OES);
             prog2d = program(VS, FS_2D);
+            progBlur = program(VS, FS_BLUR);
             quad = ByteBuffer.allocateDirect(QUAD.length * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
             quad.put(QUAD).position(0);
         }
@@ -146,6 +156,7 @@ final class VideoEngine {
             GLES20.glBindTexture(target, tex);
             GLES20.glUniform1i(GLES20.glGetUniformLocation(prog, "uS"), 0);
             GLES20.glUniform1f(GLES20.glGetUniformLocation(prog, "uA"), alpha);
+            if (prog == progBlur) GLES20.glUniform2f(GLES20.glGetUniformLocation(prog, "uD"), dx, dy);
             GLES20.glUniformMatrix4fv(GLES20.glGetUniformLocation(prog, "uM"), 1, false, m, 0);
             GLES20.glUniformMatrix4fv(GLES20.glGetUniformLocation(prog, "uT"), 1, false, t, 0);
             int ap = GLES20.glGetAttribLocation(prog, "aP"), ac = GLES20.glGetAttribLocation(prog, "aC");
@@ -358,6 +369,10 @@ final class VideoEngine {
         long total;
         Subs subs;
         final float[] m = new float[16], r = new float[16], mm = new float[16];
+        float bgR, bgG, bgB;
+        boolean blur;
+        final int[] fb = new int[2], ft = new int[2];
+        int fw, fh;   // the small frames the blurred background is made in
 
         Comp(Context ctx, Gl gl, Handler frames) { this.ctx = ctx; this.gl = gl; this.frames = frames; }
 
@@ -388,6 +403,47 @@ final class VideoEngine {
             }
         }
 
+        /** {bg: "#rrggbb", blur}: what fills the frame around a clip */
+        void look(JSONObject o) {
+            int c = 0;
+            try { if (o != null) c = (int) Long.parseLong(o.optString("bg", "#000000").replace("#", ""), 16); } catch (Exception ignored) { }
+            bgR = ((c >> 16) & 255) / 255f; bgG = ((c >> 8) & 255) / 255f; bgB = (c & 255) / 255f;
+            blur = o != null && o.optBoolean("blur", false);
+        }
+
+        /** the clip filling the frame, small and blurred, behind it */
+        private void blurBehind(Dec d, double sw, double sh, int W, int H, float a) {
+            int w = W >= H ? 96 : Math.max(2, Math.round(96f * W / H)), h = W >= H ? Math.max(2, Math.round(96f * H / W)) : 96;
+            if (w != fw || h != fh) {
+                if (fw > 0) { GLES20.glDeleteFramebuffers(2, fb, 0); GLES20.glDeleteTextures(2, ft, 0); }
+                fw = w; fh = h;
+                GLES20.glGenFramebuffers(2, fb, 0);
+                for (int i = 0; i < 2; i++) {
+                    ft[i] = Gl.texture(GLES20.GL_TEXTURE_2D);
+                    GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, w, h, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null);
+                    GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fb[i]);
+                    GLES20.glFramebufferTexture2D(GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0, GLES20.GL_TEXTURE_2D, ft[i], 0);
+                }
+            }
+            double s = Math.max(W / sw, H / sh);
+            Matrix.setIdentityM(m, 0);
+            Matrix.scaleM(m, 0, (float) (sw * s / W), (float) (sh * s / H), 1);
+            Matrix.multiplyMM(mm, 0, m, 0, r, 0);
+            GLES20.glViewport(0, 0, w, h);
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fb[0]);
+            gl.draw(gl.progOes, GLES11Ext.GL_TEXTURE_EXTERNAL_OES, d.tex, mm, d.stm, 1f);
+            for (int i = 0; i < 4; i++) {   // across, down, across, down
+                GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fb[(i + 1) & 1]);
+                gl.dx = (i & 1) == 0 ? 1.5f / w : 0; gl.dy = (i & 1) == 0 ? 0 : 1.5f / h;
+                gl.draw(gl.progBlur, GLES20.GL_TEXTURE_2D, ft[i & 1], ID, ID, i == 3 ? 0.7f : 1f);
+            }
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0);
+            GLES20.glViewport(0, 0, W, H);
+            if (a < 1) { GLES20.glEnable(GLES20.GL_BLEND); GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA); }
+            gl.draw(gl.prog2d, GLES20.GL_TEXTURE_2D, ft[0], ID, ID, a);
+            if (a < 1) GLES20.glDisable(GLES20.GL_BLEND);
+        }
+
         private Dec dec(Clip k) {
             String key = k.id + "|" + k.src;
             Dec d = decs.get(key);
@@ -401,7 +457,7 @@ final class VideoEngine {
         /** draws time T into a W×H surface; budget: ms each decoder may take to catch up */
         void draw(long T, int W, int H, long budget, long seekBudget) {
             GLES20.glViewport(0, 0, W, H);
-            GLES20.glClearColor(0, 0, 0, 1);
+            GLES20.glClearColor(bgR, bgG, bgB, 1);
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
             java.util.HashSet<String> used = new java.util.HashSet<>();
             for (Clip k : clips) {
@@ -422,9 +478,10 @@ final class VideoEngine {
                 float a = k.tx > 0 && T < k.at + k.tx ? (float) (T - k.at) / k.tx : 1f;
                 boolean turn = d.rot == 90 || d.rot == 270;
                 double sw = turn ? d.h : d.w, sh = turn ? d.w : d.h, s = Math.min(W / sw, H / sh);
+                Matrix.setRotateM(r, 0, -d.rot, 0, 0, 1);
+                if (blur && Math.abs(sw * s - W) + Math.abs(sh * s - H) > 2) blurBehind(d, sw, sh, W, H, a);
                 Matrix.setIdentityM(m, 0);
                 Matrix.scaleM(m, 0, (float) (sw * s / W), (float) (sh * s / H), 1);
-                Matrix.setRotateM(r, 0, -d.rot, 0, 0, 1);
                 Matrix.multiplyMM(mm, 0, m, 0, r, 0);
                 if (a < 1) { GLES20.glEnable(GLES20.GL_BLEND); GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA); }
                 gl.draw(gl.progOes, GLES11Ext.GL_TEXTURE_EXTERNAL_OES, d.tex, mm, d.stm, a);
@@ -452,7 +509,7 @@ final class VideoEngine {
     /* ---------- export / proxy: the compositor into an H.264 encoder ---------- */
 
     /** clips as for Comp.set; W×H even; gop: seconds between key frames */
-    static void encode(Context c, JSONArray clips, int W, int H, int fps, float gop, JSONArray subs, File out,
+    static void encode(Context c, JSONArray clips, int W, int H, int fps, float gop, JSONArray subs, JSONObject look, File out,
                        AudioTools.Progress p, double lo, double hi, AtomicBoolean cancel) throws Exception {
         MediaCodec enc = null;
         Surface in = null;
@@ -489,6 +546,7 @@ final class VideoEngine {
             gl.current(win);
             comp = new Comp(c, gl, new Handler(ht.getLooper()));
             comp.set(clips);
+            comp.look(look);
             if (subs != null && subs.length() > 0) comp.subs = new Subs(subs, W, H);
             MediaCodec.BufferInfo bi = new MediaCodec.BufferInfo();
             long total = comp.total;
@@ -615,7 +673,7 @@ final class VideoEngine {
 
     private void apply() {
         if (comp == null || pending == null) return;
-        try { comp.set(new JSONObject(pending).getJSONArray("clips")); } catch (Exception ignored) { }
+        try { JSONObject o = new JSONObject(pending); comp.set(o.getJSONArray("clips")); comp.look(o); } catch (Exception ignored) { }
         pending = null;
     }
 

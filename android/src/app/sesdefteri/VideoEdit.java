@@ -235,8 +235,8 @@ final class VideoEdit {
     }
 
     /**
-     * a: {clips: [{id, uri, at, in, out, tx (s)}], audio?: timeline mix, q: 0 (as it is) / 1080 / 720, subs?: [[t0, t1, text]]
-     * burned in, name}
+     * a: {clips: [{id, uri, at, in, out, tx (s)}], audio?: timeline mix, q: 0 (as it is) / 1080 / 720, ar?: frame w/h,
+     * bg?: "#rrggbb", blur?: blurred copy behind, subs?: [[t0, t1, text]] burned in, name}
      */
     static JSONObject render(Context c, JSONObject a, AudioTools.Progress p, AtomicBoolean cancel) throws Exception {
         JSONArray clips = a.getJSONArray("clips");
@@ -259,7 +259,9 @@ final class VideoEdit {
         int q = a.optInt("q", 0);
         JSONArray subs = a.optJSONArray("subs");
         if (subs != null && subs.length() == 0) subs = null;
-        boolean copy = q == 0 && subs == null && !fades && copyable(c, segs);
+        double ar = a.optDouble("ar", 0);   // the project's frame (w/h); 0: the first clip's
+        JSONObject look = new JSONObject().put("bg", a.optString("bg", "#000000")).put("blur", a.optBoolean("blur", false));
+        boolean copy = q == 0 && ar <= 0 && subs == null && !fades && copyable(c, segs);
 
         File cache = c.getCacheDir();
         long id = System.nanoTime();
@@ -271,12 +273,13 @@ final class VideoEdit {
             if (copy) {
                 copyPicture(c, segs, pic, total, p, 0.22, 0.9, cancel);
             } else {
-                // the frame: the first clip as shown, short side 1080 / 720 (or as it is, at most 1920 on the long side)
+                // the frame: the project's shape (or the first clip as shown), short side 1080 / 720 (or as it is, at most 1920 on the long side)
                 Seg f = segs[0];
                 boolean turn = f.rot == 90 || f.rot == 270;
                 double dw = turn ? f.h : f.w, dh = turn ? f.w : f.h;
+                if (ar > 0) { dw = ar >= 1 ? 1080 * ar : 1080; dh = ar >= 1 ? 1080 : 1080 / ar; }
                 double sc = q > 0 ? q / Math.min(dw, dh) : Math.min(1, 1920 / Math.max(dw, dh));
-                VideoEngine.encode(c, comp, even(dw * sc), even(dh * sc), 30, 1f, subs, pic, p, 0.22, 0.95, cancel);
+                VideoEngine.encode(c, comp, even(dw * sc), even(dh * sc), 30, 1f, subs, look, pic, p, 0.22, 0.95, cancel);
             }
             MediaExtractor vx = new MediaExtractor();
             try {
@@ -316,7 +319,7 @@ final class VideoEdit {
             File tmp = new File(dir, key + ".tmp");
             try {
                 JSONArray one = new JSONArray().put(new JSONObject().put("id", "p").put("src", uri).put("at", 0).put("in", 0).put("out", dur / 1000.0));
-                VideoEngine.encode(c, one, even(dw * sc), even(dh * sc), 30, 0.5f, null, tmp, p, 0, 0.75, cancel);
+                VideoEngine.encode(c, one, even(dw * sc), even(dh * sc), 30, 0.5f, null, null, tmp, p, 0, 0.75, cancel);
                 if (!tmp.renameTo(v)) throw new IllegalStateException("proxy");
             } finally {
                 tmp.delete();
@@ -358,13 +361,75 @@ final class VideoEdit {
         return o;
     }
 
-    /** drops proxies whose source is no longer in any project */
+    /** drops proxies whose source is no longer in any project (the open one and every saved one) */
     static void proxyClean(Context c, JSONArray keep) {
         File[] fs = new File(c.getFilesDir(), "vproxy").listFiles();
         if (fs == null) return;
         java.util.HashSet<String> k = new java.util.HashSet<>();
         for (int i = 0; i < keep.length(); i++) { String u = keep.optString(i); k.add(Integer.toHexString(u.hashCode()) + "-" + Integer.toHexString(u.length())); }
+        try {
+            JSONArray ps = new JSONArray(projList(c));
+            for (int i = 0; i < ps.length(); i++) {
+                JSONArray us = ps.getJSONObject(i).optJSONObject("meta") == null ? null : ps.getJSONObject(i).getJSONObject("meta").optJSONArray("uris");
+                if (us != null) for (int j = 0; j < us.length(); j++) { String u = us.optString(j); k.add(Integer.toHexString(u.hashCode()) + "-" + Integer.toHexString(u.length())); }
+            }
+        } catch (Exception e) { return; }   // a project we cannot read might need them
         for (File f : fs) { String n = f.getName(); int dot = n.indexOf('.'); if (!k.contains(dot > 0 ? n.substring(0, dot) : n)) f.delete(); }
+    }
+
+    /* ---------- projects: files/projects/<id>/project.json, written whole through a temporary file ---------- */
+
+    private static File projFile(Context c, String id) {
+        if (id == null || !id.matches("[A-Za-z0-9_-]{1,40}")) throw new IllegalArgumentException("id");
+        return new File(new File(new File(c.getFilesDir(), "projects"), id), "project.json");
+    }
+
+    static String projGet(Context c, String id) {
+        try { return new String(readAll(projFile(c, id)), "UTF-8"); } catch (Exception e) { return ""; }
+    }
+
+    static boolean projPut(Context c, String id, String json) {
+        try {
+            File f = projFile(c, id), t = new File(f.getParentFile(), "project.tmp");
+            f.getParentFile().mkdirs();
+            FileOutputStream o = new FileOutputStream(t);
+            try { o.write(json.getBytes("UTF-8")); o.getFD().sync(); } finally { o.close(); }
+            return t.renameTo(f);
+        } catch (Exception e) { return false; }
+    }
+
+    static void projDel(Context c, String id) {
+        File d = projFile(c, id).getParentFile();
+        File[] fs = d.listFiles();
+        if (fs != null) for (File f : fs) f.delete();
+        d.delete();
+    }
+
+    /** [{id, name, updated, preset, meta}], newest first */
+    static String projList(Context c) {
+        File[] ds = new File(c.getFilesDir(), "projects").listFiles();
+        ArrayList<JSONObject> out = new ArrayList<>();
+        if (ds != null) for (File d : ds) {
+            try {
+                JSONObject p = new JSONObject(new String(readAll(new File(d, "project.json")), "UTF-8"));
+                out.add(new JSONObject().put("id", d.getName()).put("name", p.optString("name", "")).put("updated", p.optLong("updated", 0))
+                    .put("preset", p.optString("preset", "orig")).put("meta", p.optJSONObject("meta")));
+            } catch (Exception ignored) { }
+        }
+        java.util.Collections.sort(out, new java.util.Comparator<JSONObject>() {
+            @Override public int compare(JSONObject a, JSONObject b) { return Long.compare(b.optLong("updated"), a.optLong("updated")); }
+        });
+        return new JSONArray(out).toString();
+    }
+
+    private static byte[] readAll(File f) throws Exception {
+        FileInputStream in = new FileInputStream(f);
+        try {
+            ByteArrayOutputStream b = new ByteArrayOutputStream((int) Math.max(256, f.length()));
+            byte[] buf = new byte[16384];
+            for (int n; (n = in.read(buf)) > 0; ) b.write(buf, 0, n);
+            return b.toByteArray();
+        } finally { in.close(); }
     }
 
     private static Seg open(Context c, String uri) throws Exception {

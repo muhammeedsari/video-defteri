@@ -63,6 +63,8 @@ public class MainActivity extends Activity implements Player.Listener {
     private static final int REQ_VIDEO_TL = 17;
     private static final int REQ_VIDEO_V = 18;
     private android.view.TextureView vview;
+    private android.view.View vsafe;
+    private volatile float[] safeIn;   // the platform's safe area as top, right, bottom, left fractions of the preview
     private volatile String videoBusy;
 
     private WebView web;
@@ -106,6 +108,23 @@ public class MainActivity extends Activity implements Player.Listener {
             @Override public boolean onSurfaceTextureDestroyed(android.graphics.SurfaceTexture st) { VideoEngine.I.surfaceGone(); return true; }
             @Override public void onSurfaceTextureUpdated(android.graphics.SurfaceTexture st) { }
         });
+        // dashed lines over the preview: where the platform's buttons and captions do not cover the picture
+        final float dp = getResources().getDisplayMetrics().density;
+        final android.graphics.Paint dash = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG), under = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        dash.setStyle(android.graphics.Paint.Style.STROKE); dash.setStrokeWidth(1.5f * dp); dash.setColor(0xD9FFFFFF);
+        dash.setPathEffect(new android.graphics.DashPathEffect(new float[] { 6 * dp, 4 * dp }, 0));
+        under.setStyle(android.graphics.Paint.Style.STROKE); under.setStrokeWidth(3 * dp); under.setColor(0x59000000);
+        vsafe = new android.view.View(this) {
+            @Override protected void onDraw(android.graphics.Canvas c) {
+                float[] f = safeIn;
+                if (f == null) return;
+                float w = getWidth(), h = getHeight(), l = f[3] * w, t = f[0] * h, r = w - f[1] * w, b = h - f[2] * h;
+                c.drawRect(l, t, r, b, under);
+                c.drawRect(l, t, r, b, dash);
+            }
+        };
+        vsafe.setTranslationX(-100000);
+        root.addView(vsafe, new android.widget.FrameLayout.LayoutParams(16, 9));
         setContentView(root);
         applyBars("page");
 
@@ -878,6 +897,17 @@ public class MainActivity extends Activity implements Player.Listener {
         @JavascriptInterface public void vSeek(double sec) { VideoEngine.I.seek(sec); }
         @JavascriptInterface public double vPos() { return VideoEngine.I.pos(); }
         @JavascriptInterface public boolean vPlaying() { return VideoEngine.I.isPlaying(); }
+        /** "[top, right, bottom, left]" fractions of the frame, or "" for no lines */
+        @JavascriptInterface public void vSafe(String json) {
+            float[] f = null;
+            try { JSONArray a = new JSONArray(json); f = new float[] { (float) a.getDouble(0), (float) a.getDouble(1), (float) a.getDouble(2), (float) a.getDouble(3) }; } catch (Exception ignored) { }
+            safeIn = f;
+            ui(new Runnable() { @Override public void run() { vsafe.invalidate(); } });
+        }
+        @JavascriptInterface public String vProjList() { return VideoEdit.projList(MainActivity.this); }
+        @JavascriptInterface public String vProjGet(String id) { return VideoEdit.projGet(MainActivity.this, id); }
+        @JavascriptInterface public boolean vProjPut(String id, String json) { return VideoEdit.projPut(MainActivity.this, id, json); }
+        @JavascriptInterface public void vProjDel(String id) { try { VideoEdit.projDel(MainActivity.this, id); } catch (Exception ignored) { } }
         /** where the preview goes, in page pixels (w = 0 hides it) */
         @JavascriptInterface public void vRect(final double x, final double y, final double w, final double h) {
             ui(new Runnable() {
@@ -885,9 +915,14 @@ public class MainActivity extends Activity implements Player.Listener {
                     float d = getResources().getDisplayMetrics().density;
                     int pw = Math.max(16, (int) Math.round(w * d)), ph = Math.max(9, (int) Math.round(h * d));
                     android.view.ViewGroup.LayoutParams lp = vview.getLayoutParams();
-                    if (w > 0 && (lp.width != pw || lp.height != ph)) { lp.width = pw; lp.height = ph; vview.setLayoutParams(lp); }
-                    vview.setTranslationX(w > 0 ? (float) (x * d) : -100000);
-                    vview.setTranslationY((float) (y * d));
+                    if (w > 0 && (lp.width != pw || lp.height != ph)) {
+                        lp.width = pw; lp.height = ph; vview.setLayoutParams(lp);
+                        android.view.ViewGroup.LayoutParams sp = vsafe.getLayoutParams(); sp.width = pw; sp.height = ph; vsafe.setLayoutParams(sp);
+                    }
+                    for (android.view.View v : new android.view.View[] { vview, vsafe }) {
+                        v.setTranslationX(w > 0 ? (float) (x * d) : -100000);
+                        v.setTranslationY((float) (y * d));
+                    }
                     if (w > 0) VideoEngine.I.refresh();
                 }
             });

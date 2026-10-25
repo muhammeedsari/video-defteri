@@ -241,3 +241,25 @@ html,body{overflow-x:hidden;max-width:100%;overscroll-behavior:none}
 .v-clip.fx::before{content:"";position:absolute;left:-2px;top:50%;width:8px;height:8px;margin-top:-4px;border-radius:50%;background:var(--accent);z-index:1}
 .v-clip em{position:absolute;inset:0;background:rgba(0,0,0,.45)}
 .vtab #recBtn{display:none}
+/* 0.4: project bar, project list, frame and background */
+.v-head{display:flex;align-items:center;gap:6px;margin-top:4px}
+.v-name{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;background:none;border:0;padding:4px 0;color:inherit;text-align:start}
+.v-name b{font-size:15px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.v-name span{font-size:12px;color:var(--muted)}
+.v-projs{display:flex;flex-direction:column;gap:8px}
+.v-proj{display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:12px;padding:6px}
+.v-proj.on{border-color:var(--accent)}
+.v-pmain{flex:1;min-width:0;display:flex;align-items:center;gap:10px;background:none;border:0;padding:0;color:inherit;text-align:start}
+.v-pmain img,.v-pmain i{width:64px;height:40px;border-radius:8px;object-fit:cover;background:var(--surface-2);flex:none;display:flex;align-items:center;justify-content:center}
+.v-pmain span{display:flex;flex-direction:column;min-width:0}
+.v-pmain b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.v-pmain small{font-size:12px;color:var(--muted)}
+.v-pres{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px}
+.v-pres button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:1px solid var(--line);border-radius:12px;padding:9px 10px;background:var(--bg);color:inherit;text-align:start}
+.v-pres button small{font-size:11.5px;color:var(--muted)}
+.v-pres button[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.v-bgs{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 12px}
+.v-bgs button,.v-bgc{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);padding:0;position:relative;overflow:hidden}
+.v-bgs button[aria-pressed="true"]{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--accent)}
+.v-bgc{background:conic-gradient(#e5484d,#f2b83d,#30a46c,#3e63dd,#8e4ec6,#e5484d)}
+.v-bgc input{position:absolute;inset:0;opacity:0;width:100%;height:100%;border:0;padding:0}
