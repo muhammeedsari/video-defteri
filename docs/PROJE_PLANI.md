@@ -281,3 +281,11 @@ Uygulama içi çekim + teleprompter, platform güvenli alanlarının otomatik g�
 | 25.10.2026 | Kapsam: yalnızca YouTube/Instagram/TikTok üreticisi ihtiyaçları; CapCut ekstraları yok |
 | 25.10.2026 | İş modeli: abonelik yok, çoğu ücretsiz, premium tek seferlik ve ucuz |
 | 25.10.2026 | Ses Defteri'nin içine değil, ayrı uygulama; ses altyapısı oradan kopyalanır |
+
+## 9. Aşama 0 uygulama notları (0.3, 25 Ekim 2026)
+- Kendi motor yolu denendi (Media3 değil): `VideoEngine.java` — `Dec` (MediaCodec → SurfaceTexture, kare doğru arama: anahtar kareden çöz, hedefe kadar göstermeden atla), `Comp` (OpenGL ES 2 birleştirici: sığdırma, döndürme, yumuşak geçiş, altyazı), `encode()` (aynı birleştirici → H.264, sabit 30 fps).
+- Önizleme: WebView'in üstünde `TextureView` (sayfa `AND.vRect` ile yerini bildirir; açılır pencerelerde gizlenir). Saat = ses (`Timeline.play/pos`), ses yoksa duvar saati.
+- Proxy: `files/vproxy/<anahtar>.mp4` (kısa kenar 540, 0,5 sn'de bir anahtar kare) + `.wav` (48 kHz ses; önizleme ve dışa aktarma sesi buradan).
+- Geçiş: klip başına `tx` (0 / 0,5 sn), klipler birbirinin üstüne biner; ses de aynı sürede çapraz geçer.
+- Proje hâlâ localStorage `vproj`'da; dosyaya taşıma Aşama 1'de.
+- Kabul ölçütleri telefonda bekleniyor; karar satırı ölçümden sonra yazılacak.

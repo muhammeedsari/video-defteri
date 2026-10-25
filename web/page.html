@@ -555,7 +555,7 @@ html,body{overflow-x:hidden;max-width:100%;overscroll-behavior:none}
 .asr-pick small{color:var(--muted);font-size:12px}
 .asr-row .btn{justify-self:start}
 /* Video Defteri: video tab */
-.v-stage{position:relative;background:#000;border-radius:var(--r);overflow:hidden;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;margin-top:6px}
+.v-stage{position:relative;background:#000;border-radius:var(--r);overflow:hidden;aspect-ratio:16/9;max-height:55vh;max-width:100%;margin-left:auto;margin-right:auto;display:flex;align-items:center;justify-content:center;margin-top:6px}
 .v-stage video{width:100%;height:100%;object-fit:contain;display:block}
 .v-ph{display:flex;flex-direction:column;align-items:center;gap:6px;color:#cfd6d2;text-align:center;padding:16px;font-size:13.5px}
 .v-ph .ic{width:34px;height:34px}
@@ -586,6 +586,9 @@ html,body{overflow-x:hidden;max-width:100%;overscroll-behavior:none}
 .v-sub{display:flex;gap:8px;align-items:flex-start;margin-top:8px}
 .v-sub .tc{flex:none;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:6px;font-size:12px}
 .v-sub textarea{flex:1;min-width:0;font:inherit;font-size:14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);padding:6px 8px;resize:vertical}
+.v-clip.fx::before{content:"";position:absolute;left:-2px;top:50%;width:8px;height:8px;margin-top:-4px;border-radius:50%;background:var(--accent);z-index:1}
+.v-clip em{position:absolute;inset:0;background:rgba(0,0,0,.45)}
+.vtab #recBtn{display:none}
 </style>
 
 <div class="wrap" id="app">
@@ -801,7 +804,7 @@ const IN_FRAME = (() => { try { return window.self !== window.top; } catch (e) {
 const AND = (() => { try { return window.SesDefteriAndroid || null; } catch (e) { return null; } })();
 const CAPS = (() => { try { return AND && AND.caps ? JSON.parse(AND.caps()) : {}; } catch (e) { return {}; } })();
 const NATIVE = !!(AND && CAPS.native);
-const VERSION = '0.2';
+const VERSION = '0.3';
 const ls = {
   get(k, d) { try { const v = localStorage.getItem('sd:' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem('sd:' + k, JSON.stringify(v)); } catch (e) {} }
@@ -1367,6 +1370,7 @@ function openOverlay(n) {
   if (n === 'rec') bars('stage');
   document.body.classList.add('locked');
   arm();
+  vRect();
 }
 function hideEl(el) {
   el.classList.remove('open');
@@ -1386,6 +1390,7 @@ function closeOverlay(n, fromPop) {
   if (!stack.length) document.body.classList.remove('locked');
   if (!fromPop && !stack.length) disarm();
   updateMini();
+  vRect();
   return true;
 }
 function swapOverlay(from, to) {
@@ -1700,6 +1705,8 @@ function renderTabs() {
   const bb = $('#batchBtn'); bb.hidden = !NATIVE || S.tab !== 'rec'; bb.innerHTML = ic('spark') + esc(t('batch'));
   if (edit) { $('#empty').hidden = true; renderEdit(); }
   if (video) { $('#empty').hidden = true; renderVideo(); } else vPause();
+  document.body.classList.toggle('vtab', video);
+  vRect();
   $('#q').placeholder = t(music ? 'searchMusic' : 'searchRec');
   $('#libNote').hidden = music || S.media || ls.get('libNoteX', false);
 }
@@ -1708,7 +1715,6 @@ function render() { renderTabs(); renderChips(); renderList(); renderSummary(); 
 $('#tabs').addEventListener('click', e => {
   const b = e.target.closest('[data-tab]'); if (!b) return;
   if (b.dataset.tab !== 'edit') tlStop();
-  if (b.dataset.tab === 'video' && S.tab === 'edit' && VP.p) VP.idx = -1;
   S.tab = b.dataset.tab; ls.set('tab', S.tab); listLimit = 120; musicLimit = 150; render(); scrollTo(0, 0);
 });
 $('#chips').addEventListener('click', e => {
@@ -4957,48 +4963,93 @@ function openFeedback() {
   try { window.open(FEEDBACK_URL, '_blank', 'noopener'); } catch (e) {}
 }
 
-/* ---------- Video Defteri: video tab (cut list, sound, subtitles, export) ---------- */
-const VP = { p: null, sel: null, lib: null, libBusy: false, idx: -1, pos: 0, play: false, raf: 0, busy: null, undo: [], seekTo: null };
-const vNew = () => ({ name: '', clips: [], sound: 'orig', sig: '', subs: null, burn: true });
-function vLoad() { const p = ls.get('vproj', null); VP.p = Object.assign(vNew(), p && Array.isArray(p.clips) ? p : {}); }
+/* ---------- Video Defteri: video tab (cut list, native preview, sound, subtitles, export) ---------- */
+const VP = { p: null, sel: null, lib: null, libBusy: false, pos: 0, play: false, raf: 0, busy: null, undo: [], prox: null, proxP: 0, cleaned: false };
+const vNew = () => ({ name: '', clips: [], px: {}, sound: 'orig', sig: '', subs: null, burn: true });
+function vLoad() { const p = ls.get('vproj', null); VP.p = Object.assign(vNew(), p && Array.isArray(p.clips) ? p : {}); if (!VP.p.px) VP.p.px = {}; }
 const vLen = c => c.out - c.in;
-const vTotal = () => VP.p.clips.reduce((a, c) => a + vLen(c), 0);
-const vStart = i => VP.p.clips.slice(0, i).reduce((a, c) => a + vLen(c), 0);
-const vSig = () => VP.p.clips.map(c => c.uri + '@' + c.in.toFixed(2) + '-' + c.out.toFixed(2)).join('|');
-const vSrc = uri => '/__vid?u=' + encodeURIComponent(uri);
+/** where each clip starts: right after the one before, overlapping it by its fade-in */
+function vPlace() {
+  let at = 0, prev = null;
+  for (const c of VP.p.clips) {
+    const tx = prev && c.tx ? Math.min(c.tx, vLen(prev) / 2, vLen(c) / 2) : 0;
+    c.at = prev ? prev.at + vLen(prev) - tx : 0; c.ftx = tx;
+    prev = c;
+  }
+}
+const vTotal = () => { const c = VP.p.clips[VP.p.clips.length - 1]; return c ? c.at + vLen(c) : 0; };
+const vSig = () => VP.p.clips.map(c => c.uri + '@' + c.in.toFixed(2) + '-' + c.out.toFixed(2) + '~' + (c.tx || 0)).join('|');
 const vThumb = (uri, s) => '/__thumb?u=' + encodeURIComponent(uri) + '&t=' + Math.round((s || 0) * 1000);
 const vSel = () => VP.p.clips.find(c => c.id === VP.sel) || null;
+const vPx = c => VP.p.px[c.uri] || null;
+function vSave() { ls.set('vproj', VP.p); }
 function vCommit(before) {
   if (before !== JSON.stringify(VP.p)) { VP.undo.push(before); if (VP.undo.length > 40) VP.undo.shift(); }
-  ls.set('vproj', VP.p);
+  vPlace(); vSave();
   if (VP.pos > vTotal()) VP.pos = vTotal();
-  VP.idx = -1;
-  renderVideo();
+  renderVideo(); vProxies();
 }
-/** which clip plays at sequence time T, and where inside it */
+/** which clip is on top at sequence time T, and where inside it */
 function vAt(T) {
-  let a = 0;
-  for (let i = 0; i < VP.p.clips.length; i++) { const l = vLen(VP.p.clips[i]); if (T < a + l || i === VP.p.clips.length - 1) return { i, off: Math.max(0, Math.min(l, T - a)) }; a += l; }
-  return { i: -1, off: 0 };
+  let k = -1;
+  VP.p.clips.forEach((c, i) => { if (T >= c.at - 1e-6) k = i; });
+  if (k < 0) return { i: -1, off: 0 };
+  return { i: k, off: Math.max(0, Math.min(vLen(VP.p.clips[k]), T - VP.p.clips[k].at)) };
+}
+
+/* ----- native preview (VideoEngine): the page keeps a box free, the phone draws into it ----- */
+function vSync() {
+  try { AND.vSet(JSON.stringify({ clips: VP.p.clips.map(c => { const x = vPx(c); return { id: c.id, src: x ? x.v : '', at: c.at, in: c.in, out: c.out, tx: c.ftx || 0 }; }) })); } catch (e) {}
+}
+var vRectQ = 0;
+function vRect() {
+  if (vRectQ) return;
+  vRectQ = requestAnimationFrame(() => {
+    vRectQ = 0;
+    const st = $('#vStage');
+    const show = st && S.tab === 'video' && !stack.length && VP.p && VP.p.clips.length && !document.hidden;
+    try {
+      if (!show) { AND.vRect(0, 0, 0, 0); return; }
+      const r = st.getBoundingClientRect();
+      AND.vRect(r.left, r.top, r.width, r.height);
+    } catch (e) {}
+  });
+}
+addEventListener('scroll', vRect, { passive: true });
+addEventListener('resize', vRect);
+/** the sound the preview plays and the export uses: the clips' own sound (crossfaded like the picture) or the studio mix */
+function vAudio() {
+  if (VP.p.sound === 'studio') { if (!TL.p) tlLoad(); return tlMix(); }
+  const cl = VP.p.clips, out = [];
+  cl.forEach((c, i) => {
+    const x = vPx(c); if (!x || !x.a) return;
+    const len = Math.min(c.out, x.adur || c.out) - c.in; if (len <= 0) return;
+    out.push({ path: x.a, at: c.at, in: c.in, len, g: 1, xi: c.ftx || 0, xo: cl[i + 1] ? cl[i + 1].ftx || 0 : 0 });
+  });
+  return out;
 }
 
 function renderVideo() {
   const box = $('#videoTab');
   if (!box || S.tab !== 'video') return;
   if (!NATIVE) { box.innerHTML = `<div class="empty">${ic('film', 1.6)}<b>${esc(t('tabVideo'))}</b>${esc(t('wsNative'))}</div>`; return; }
-  if (!VP.p) vLoad();
+  if (!VP.p) { vLoad(); vPlace(); vSync(); vProxies(); }
+  if (!VP.cleaned) { VP.cleaned = true; try { runJob('vProxyClean', { keep: VP.p.clips.map(c => c.uri) }).catch(() => {}); } catch (e) {} }
   const cl = VP.p.clips, empty = !cl.length, c = vSel(), dis = VP.busy ? ' disabled' : '';
   const b = (k, icn, lab) => `<button class="tool" type="button" data-v="${k}"${dis}>${ic(icn)}${esc(lab)}</button>`;
   const stale = VP.p.sound === 'studio' && VP.p.sig !== vSig();
-  box.innerHTML = `<div class="v-stage">${empty ? `<div class="v-ph">${ic('film', 1.6)}<b>${esc(t('vEmpty'))}</b><span>${esc(t('vEmptyD'))}</span></div>` : '<video id="vPrev" playsinline preload="metadata"></video>'}</div>
+  const f = cl.find(vPx), ar = f ? vPx(f).w / vPx(f).h : 16 / 9;
+  const ci = c ? cl.indexOf(c) : -1;
+  box.innerHTML = `<div class="v-stage" id="vStage" style="aspect-ratio:${ar.toFixed(4)};width:min(100%,calc(55vh * ${ar.toFixed(4)}))">${empty ? `<div class="v-ph">${ic('film', 1.6)}<b>${esc(t('vEmpty'))}</b><span>${esc(t('vEmptyD'))}</span></div>` : ''}</div>
     ${empty ? '' : `<div class="v-ctl"><button class="ctl" type="button" data-v="play" id="vPlay" style="width:48px;height:48px">${ic(VP.play ? 'pause' : 'play')}</button>
-      <input type="range" id="vSeek" min="0" max="${vTotal().toFixed(2)}" step="0.05" value="${VP.pos.toFixed(2)}" aria-label="${esc(t('vSeek'))}"><span class="tc" id="vTime"></span></div>`}
+      <input type="range" id="vSeek" min="0" max="${vTotal().toFixed(2)}" step="0.02" value="${VP.pos.toFixed(2)}" aria-label="${esc(t('vSeek'))}"><span class="tc" id="vTime"></span></div>`}
+    ${VP.prox ? `<p class="hint">${esc(t('vProxying', { p: Math.round(VP.proxP * 100) }))}</p>` : ''}
     <div id="vBusy"${VP.busy ? '' : ' hidden'}><p class="st-desc"><b id="vBusyT"></b></p><div class="row"><div class="prog" style="flex:1"><i id="vBusyBar"></i></div><button class="btn sm" type="button" data-v="cancel">${esc(t('cancel'))}</button></div></div>
-    <div class="v-strip">${cl.map((x, i) => `<button type="button" class="v-clip${x.id === VP.sel ? ' on' : ''}" data-vc="${esc(x.id)}"><img loading="lazy" alt="" src="${esc(vThumb(x.uri, x.in + 0.5))}"><span class="tc">${fmt(vLen(x))}</span><i>${i + 1}</i></button>`).join('')}
+    <div class="v-strip">${cl.map((x, i) => `<button type="button" class="v-clip${x.id === VP.sel ? ' on' : ''}${x.ftx ? ' fx' : ''}" data-vc="${esc(x.id)}"><img loading="lazy" alt="" src="${esc(vThumb(x.uri, x.in + 0.5))}"><span class="tc">${fmt(vLen(x))}</span><i>${i + 1}</i>${vPx(x) ? '' : '<em></em>'}</button>`).join('')}
       <button type="button" class="v-clip v-add" data-v="pick"${dis}>${ic('plus', 1.6)}</button></div>
     <div class="tl-bar">${c
-      ? b('done', 'check', t('tlDone')) + b('trim', 'scissors', t('vTrim')) + b('split', 'scissors', t('tlSplit')) + b('left', 'back', t('vLeft')) + b('right', 'next', t('vRight')) + b('dup', 'copy', t('tlDup')) + b('del', 'trash', t('tlDelete'))
-      : b('pick', 'import', t('vAdd')) + (empty ? '' : b('studio', 'mixer', t('vStudio')) + b('music', 'note', t('vMusic')) + b('subs', 'text', t('vSubs')) + (VP.undo.length ? b('undo', 'undo', t('undo')) : '') + b('new', 'trash', t('tlNewP')))}</div>
+      ? b('done', 'check', t('tlDone')) + b('trim', 'scissors', t('vTrim')) + b('split', 'scissors', t('tlSplit')) + (ci > 0 ? `<button class="tool" type="button" data-v="fade" aria-pressed="${!!c.tx}"${dis}>${ic('spark')}${esc(t('vFade'))}</button>` : '') + b('left', 'back', t('vLeft')) + b('right', 'next', t('vRight')) + b('dup', 'copy', t('tlDup')) + b('del', 'trash', t('tlDelete'))
+      : b('pick', 'import', t('vAdd')) + (empty ? '' : b('studio', 'mixer', t('vStudio')) + b('music', 'note', t('vMusic')) + b('subs', 'textic', t('vSubs')) + (VP.undo.length ? b('undo', 'undo', t('undo')) : '') + b('new', 'trash', t('tlNewP')))}</div>
     ${empty ? '' : `<div class="v-info">
       <p>${ic('wave')}<span>${esc(t(VP.p.sound === 'studio' ? 'vSoundStudio' : 'vSoundOrig'))}</span>${VP.p.sound === 'studio' ? `<button class="btn sm" type="button" data-v="toOrig"${dis}>${esc(t('vSoundReset'))}</button>` : ''}</p>
       ${stale ? `<p class="v-warn">${esc(t('vStale'))} <button class="btn sm" type="button" data-v="rebuild"${dis}>${esc(t('vRebuild'))}</button></p>` : ''}
@@ -5006,14 +5057,10 @@ function renderVideo() {
       <button class="btn primary v-export" type="button" data-v="export"${dis}>${ic('share')}${esc(t('vExport'))} · ${fmt(vTotal())}</button></div>`}
     <h3 class="v-h">${esc(t('vLib'))}</h3><div class="v-grid" id="vGrid"></div>`;
   vBusyUi(); vLib();
-  const v = $('#vPrev');
-  if (v) {
-    v.muted = VP.p.sound === 'studio';
-    VP.idx = -1; vShow(VP.pos, false);
-    $('#vSeek').oninput = e => { const was = VP.play; vPause(); vShow(+e.target.value, was); };
-    v.onclick = () => vToggle();
-  }
-  vTime();
+  const sk = $('#vSeek');
+  if (sk) sk.oninput = e => { vPause(); VP.pos = +e.target.value; try { AND.vSeek(VP.pos); } catch (x) {} vTime(); };
+  const stg = $('#vStage'); if (stg) stg.onclick = () => vToggle();
+  vTime(); vRect();
 }
 function vTime() { const el = $('#vTime'); if (el) el.textContent = fmt(VP.pos) + ' / ' + fmt(vTotal()); const s = $('#vSeek'); if (s && document.activeElement !== s) s.value = VP.pos; }
 function vBusyUi() {
@@ -5032,42 +5079,21 @@ async function vJob(label, kind, args) {
   } finally { VP.busy = null; renderVideo(); }
 }
 
-/* ----- preview: the page's <video> walks through the clips; studio sound plays from the native mixer ----- */
-function vShow(T, play) {
-  const v = $('#vPrev'); if (!v || !VP.p.clips.length) return;
-  VP.pos = Math.max(0, Math.min(vTotal(), T));
-  const { i, off } = vAt(VP.pos), c = VP.p.clips[i];
-  const go = () => { try { v.currentTime = c.in + off; } catch (e) {} if (play) v.play().catch(() => {}); };
-  if (VP.idx !== i || v.dataset.u !== c.uri) {
-    VP.idx = i;
-    if (v.dataset.u !== c.uri) { v.dataset.u = c.uri; v.src = vSrc(c.uri); }
-    if (v.readyState >= 1) go(); else v.addEventListener('loadedmetadata', go, { once: true });
-  } else go();
-  vTime();
-}
 function vToggle() { if (VP.play) vPause(); else vPlayNow(); }
 function vPlayNow() {
-  const v = $('#vPrev'); if (!v || VP.busy) return;
+  if (!VP.p.clips.length || VP.busy) return;
   if (VP.pos >= vTotal() - 0.05) VP.pos = 0;
   if (!audio.paused) audio.pause();
   tlStop();
+  try { AND.vPlay(VP.pos, JSON.stringify(vAudio())); } catch (e) { return; }
   VP.play = true;
-  if (VP.p.sound === 'studio') { if (!TL.p) tlLoad(); try { AND.tlPlay(JSON.stringify(tlMix()), VP.pos); } catch (e) {} }
-  vShow(VP.pos, true);
   const pb = $('#vPlay'); if (pb) pb.innerHTML = ic('pause');
   cancelAnimationFrame(VP.raf);
+  let n = 0;
   const f = () => {
     if (!VP.play) return;
-    const v = $('#vPrev'); if (!v) { vPause(); return; }
-    const c = VP.p.clips[VP.idx];
-    if (c && !v.seeking && v.readyState >= 2) {
-      VP.pos = vStart(VP.idx) + Math.max(0, v.currentTime - c.in);
-      if (v.currentTime >= c.out - 0.04 || v.ended) {
-        if (VP.idx + 1 < VP.p.clips.length) vShow(vStart(VP.idx + 1), true);
-        else { VP.pos = vTotal(); vPause(); return; }
-      }
-      vTime();
-    }
+    try { VP.pos = AND.vPos(); if (++n > 10 && !AND.vPlaying()) { vPause(); return; } } catch (e) { vPause(); return; }
+    vTime();
     VP.raf = requestAnimationFrame(f);
   };
   VP.raf = requestAnimationFrame(f);
@@ -5075,10 +5101,27 @@ function vPlayNow() {
 function vPause() {
   if (!VP.play) return;
   VP.play = false; cancelAnimationFrame(VP.raf);
-  const v = $('#vPrev'); if (v) v.pause();
-  if (VP.p.sound === 'studio') try { AND.tlStop(); } catch (e) {}
+  try { AND.vPause(); VP.pos = AND.vPos(); } catch (e) {}
   const pb = $('#vPlay'); if (pb) pb.innerHTML = ic('play');
   vTime();
+}
+function vSeekTo(T) { VP.pos = Math.max(0, Math.min(vTotal(), T)); try { AND.vSeek(VP.pos); } catch (e) {} vTime(); }
+
+/* ----- proxies: one at a time, in the background of the tab ----- */
+async function vProxies() {
+  if (VP.prox || !VP.p) return;
+  const c = VP.p.clips.find(x => !vPx(x));
+  if (!c) return;
+  VP.prox = c.uri; VP.proxP = 0; renderVideo();
+  try {
+    const r = await runJob('vProxy', { uri: c.uri }, f => { VP.proxP = f; const h = document.querySelector('#videoTab .hint'); if (h && VP.prox) h.textContent = t('vProxying', { p: Math.round(f * 100) }); });
+    VP.p.px[c.uri] = r; vSave();
+  } catch (e) {
+    if (!String(e.message).includes('cancel')) { toast(errText(e), 4000); VP.p.clips = VP.p.clips.filter(x => x.uri !== c.uri); vPlace(); vSave(); }
+  }
+  VP.prox = null;
+  vSync(); renderVideo();
+  vProxies();
 }
 
 /* ----- the phone's videos ----- */
@@ -5098,10 +5141,10 @@ function vAddClips(list) {
   const before = JSON.stringify(VP.p);
   for (const x of list) {
     const dur = (x.dur || 0) / 1000; if (dur <= 0) continue;
-    VP.p.clips.push({ id: uid(), uri: x.uri, name: (x.name || '').replace(/\.[^.]+$/, ''), dur, in: 0, out: dur });
+    VP.p.clips.push({ id: uid(), uri: x.uri, name: (x.name || '').replace(/\.[^.]+$/, ''), dur, in: 0, out: dur, tx: 0 });
     if (!VP.p.name) VP.p.name = (x.name || '').replace(/\.[^.]+$/, '');
   }
-  vCommit(before);
+  vCommit(before); vSync();
   toast(t('vAdded', { n: list.length }));
 }
 async function vPick() {
@@ -5117,11 +5160,11 @@ function vTrim() {
   const c = vSel(); if (!c) return;
   const before = JSON.stringify(VP.p);
   const card = openModal(`<h3>${esc(t('vTrim'))}</h3><div class="modal-body">
-      <div class="slider"><span>${esc(t('vFrom'))}</span><input type="range" id="vtA" min="0" max="${c.dur.toFixed(2)}" step="0.05" value="${c.in}"><span class="tc" id="vtAv"></span></div>
-      <div class="slider"><span>${esc(t('vTo'))}</span><input type="range" id="vtB" min="0" max="${c.dur.toFixed(2)}" step="0.05" value="${c.out}"><span class="tc" id="vtBv"></span></div>
+      <div class="slider"><span>${esc(t('vFrom'))}</span><input type="range" id="vtA" min="0" max="${c.dur.toFixed(2)}" step="0.04" value="${c.in}"><span class="tc" id="vtAv"></span></div>
+      <div class="slider"><span>${esc(t('vTo'))}</span><input type="range" id="vtB" min="0" max="${c.dur.toFixed(2)}" step="0.04" value="${c.out}"><span class="tc" id="vtBv"></span></div>
       <p class="hint" id="vtL"></p></div>
     <div class="modal-actions"><span class="spacer"></span><button class="btn" type="button" data-x>${esc(t('cancel'))}</button><button class="btn primary" type="button" data-ok>${esc(t('ok'))}</button></div>`,
-    () => { if (!ok) { VP.p = JSON.parse(before); VP.idx = -1; renderVideo(); } });
+    () => { if (!ok) { VP.p = JSON.parse(before); vPlace(); vSync(); renderVideo(); } });
   let ok = false;
   const upd = e => {
     let a = +card.querySelector('#vtA').value, z = +card.querySelector('#vtB').value;
@@ -5129,60 +5172,46 @@ function vTrim() {
     c.in = a; c.out = z;
     card.querySelector('#vtAv').textContent = fmtT(a); card.querySelector('#vtBv').textContent = fmtT(z);
     card.querySelector('#vtL').textContent = t('vLen', { t: fmtT(z - a) });
-    const v = $('#vPrev'), i = VP.p.clips.indexOf(c);
-    if (v && e) { vPause(); VP.idx = -1; vShow(vStart(i) + (e.target.id === 'vtB' ? vLen(c) - 0.05 : 0), false); }
   };
   card.oninput = upd; upd();
   card.querySelector('[data-x]').onclick = closeModal;
-  card.querySelector('[data-ok]').onclick = () => { ok = true; closeModal(); vCommit(before); };
+  card.querySelector('[data-ok]').onclick = () => { ok = true; closeModal(); vPlace(); vSync(); VP.pos = c.at; vCommit(before); vSeekTo(c.at); };
 }
 function vSplit() {
   const { i, off } = vAt(VP.pos), c = VP.p.clips[i]; if (!c) return;
   if (off < 0.2 || off > vLen(c) - 0.2) { toast(t('vNoSplit')); return; }
   const before = JSON.stringify(VP.p), k = c.in + off;
-  const d = Object.assign({}, c, { id: uid(), in: k });
+  const d = Object.assign({}, c, { id: uid(), in: k, tx: 0 });
   c.out = k;
   VP.p.clips.splice(i + 1, 0, d); VP.sel = d.id;
-  vCommit(before);
+  vCommit(before); vSync();
 }
 function vMove(dir) {
   const c = vSel(); if (!c) return;
   const i = VP.p.clips.indexOf(c), j = i + dir; if (j < 0 || j >= VP.p.clips.length) return;
   const before = JSON.stringify(VP.p);
   VP.p.clips.splice(i, 1); VP.p.clips.splice(j, 0, c);
-  VP.pos = vStart(j);
-  vCommit(before);
+  vCommit(before); vSync(); vSeekTo(c.at);
 }
 
 /* ----- sound: into the studio timeline (all the sound tools), music with ducking ----- */
 async function vToStudio(rebuild) {
   if (!VP.p.clips.length || VP.busy) return false;
+  if (VP.p.clips.some(c => !vPx(c))) { toast(t('vWaitProxy'), 4000); return false; }
   if (!TL.p) tlLoad();
   if (!rebuild && VP.p.sound !== 'studio' && TL.p.clips.length && !(await confirmBox({ title: t('vStudioQ'), text: t('vStudioB'), ok: t('ok') }))) return false;
-  const files = new Map();
-  try {
-    for (const c of VP.p.clips) {
-      if (files.has(c.uri)) continue;
-      let r = null;
-      try { r = await vJob(t('vSoundGet'), 'tlAdd', { src: { uri: c.uri } }); }
-      catch (e) { if (String(e.message).includes('cancel')) throw e; }
-      files.set(c.uri, r);
-    }
-  } catch (e) { toast(errText(e), 4000); return false; }
   const keep = rebuild && VP.p.sound === 'studio' ? TL.p.clips.filter(x => x.tr > 0) : [];
   const tracks = rebuild && VP.p.sound === 'studio' ? TL.p.tracks : [{ vol: 0, mute: false }];
-  let at = 0;
   const clips = [];
   for (const c of VP.p.clips) {
-    const r = files.get(c.uri);
-    if (r) clips.push({ id: uid(), tr: 0, path: r.path, ch: r.ch, dur: r.dur / 1000, in: c.in, out: Math.min(c.out, r.dur / 1000), at, gain: 0, fi: 0, fo: 0, name: c.name || '' });
-    at += vLen(c);
+    const x = vPx(c); if (!x.a) continue;
+    clips.push({ id: uid(), tr: 0, path: x.a, ch: x.ach || 2, dur: x.adur, in: c.in, out: Math.min(c.out, x.adur), at: c.at, gain: 0, fi: 0, fo: 0, name: c.name || '' });
   }
   TL.p = { name: VP.p.name || t('tabVideo'), tracks, markers: [], clips: clips.concat(keep) };
   if (!TL.p.tracks.length) TL.p.tracks.push({ vol: 0, mute: false });
   TL.undo = []; TL.redo = []; TL.sel = null; TL.pos = 0;
   ls.set('proj', TL.p);
-  VP.p.sound = 'studio'; VP.p.sig = vSig(); ls.set('vproj', VP.p);
+  VP.p.sound = 'studio'; VP.p.sig = vSig(); vSave();
   renderVideo();
   return true;
 }
@@ -5209,15 +5238,14 @@ async function vMusic() {
   });
 }
 function vArgs() {
-  const a = { clips: VP.p.clips.map(c => ({ uri: c.uri, in: c.in, out: c.out })) };
-  if (VP.p.sound === 'studio') { if (!TL.p) tlLoad(); a.audio = tlMix(); }
-  return a;
+  return { clips: VP.p.clips.map(c => ({ uri: c.uri, at: c.at, in: c.in, out: c.out, tx: c.ftx || 0 })), audio: vAudio() };
 }
 
 /* ----- subtitles: speech-to-text on the final sound, editable, burned in or shared as .srt ----- */
 async function vSubs() {
   if (VP.p.subs && VP.p.subs.length) { vSubEdit(); return; }
   if (!CAPS.asr) { toast(t('textNoAsr'), 4000); return; }
+  if (VP.p.clips.some(c => !vPx(c))) { toast(t('vWaitProxy'), 4000); return; }
   if (!hasAsr() && !(await asrOffer())) return;
   let res;
   try {
@@ -5225,7 +5253,7 @@ async function vSubs() {
     res = await vJob(t('vSubMaking'), 'transcribe', { src: { path: snd.path }, lang: S.textLang, model: S.asrModel });
   } catch (e) { toast(errText(e), 5000); return; }
   if (!res.segments || !res.segments.length) { toast(t('textEmpty'), 4000); return; }
-  VP.p.subs = res.segments; ls.set('vproj', VP.p); renderVideo();
+  VP.p.subs = res.segments; vSave(); renderVideo();
   vSubEdit();
 }
 function vSubEdit() {
@@ -5235,16 +5263,17 @@ function vSubEdit() {
       ${subs.map((s, i) => `<div class="v-sub"><button class="tc" type="button" data-vs="${i}">${fmtT(s[0])}</button><textarea rows="2" data-vt="${i}">${esc(s[2])}</textarea></div>`).join('')}</div>
     <div class="modal-actions"><button class="btn" type="button" data-del>${ic('trash')}</button><button class="btn" type="button" data-srt>${ic('share')}SRT</button><span class="spacer"></span><button class="btn" type="button" data-x>${esc(t('cancel'))}</button><button class="btn primary" type="button" data-ok>${esc(t('ok'))}</button></div>`);
   const read = () => subs.map((s, i) => [s[0], s[1], card.querySelector(`[data-vt="${i}"]`).value.trim()]);
-  card.onclick = e => { const b = e.target.closest('[data-vs]'); if (b) { vPause(); vShow(subs[+b.dataset.vs][0], false); } };
+  card.onclick = e => { const b = e.target.closest('[data-vs]'); if (b) vSeekTo(subs[+b.dataset.vs][0]); };
   card.querySelector('[data-x]').onclick = closeModal;
   card.querySelector('[data-srt]').onclick = () => { try { AND.shareText(safeName(VP.p.name || 'Video') + '.srt', srtOf(read().filter(s => s[2])), 'application/x-subrip'); } catch (e) {} };
-  card.querySelector('[data-del]').onclick = async () => { closeModal(); if (await confirmBox({ title: t('vSubDelQ'), text: t('vSubDelB'), ok: t('delete'), danger: true })) { VP.p.subs = null; ls.set('vproj', VP.p); renderVideo(); } };
-  card.querySelector('[data-ok]').onclick = () => { VP.p.subs = read(); VP.p.burn = card.querySelector('#vsBurn').checked; ls.set('vproj', VP.p); closeModal(); renderVideo(); };
+  card.querySelector('[data-del]').onclick = async () => { closeModal(); if (await confirmBox({ title: t('vSubDelQ'), text: t('vSubDelB'), ok: t('delete'), danger: true })) { VP.p.subs = null; vSave(); renderVideo(); } };
+  card.querySelector('[data-ok]').onclick = () => { VP.p.subs = read(); VP.p.burn = card.querySelector('#vsBurn').checked; vSave(); closeModal(); renderVideo(); };
 }
 
 /* ----- export ----- */
 async function vExport() {
   if (!VP.p.clips.length || VP.busy) return;
+  if (VP.p.clips.some(c => !vPx(c))) { toast(t('vWaitProxy'), 4000); return; }
   if (VP.p.sound === 'studio' && VP.p.sig !== vSig()) {
     const v = await chooseBox(t('vStale'), '', [{ value: 'rb', label: t('vRebuild') }, { value: 'go', label: t('vKeep') }]);
     if (!v) return;
@@ -5255,15 +5284,17 @@ async function vExport() {
   if (q == null) return;
   const a = Object.assign(vArgs(), { q: +q, name: fileName(VP.p.name || t('tabVideo'), 'edit') });
   if (VP.p.subs && VP.p.subs.length && VP.p.burn !== false) a.subs = VP.p.subs.filter(s => s[2]);
+  const t0 = Date.now();
   try {
     const res = await vJob(t('vExporting'), 'vRender', a);
-    if (await confirmBox({ title: t('vidDone'), text: t(res.gallery ? 'vDoneD' : 'vidDoneOld'), ok: t('share'), cancel: t('ok') })) AND.share(JSON.stringify(res.src), res.name, 'video/mp4');
+    const secs = Math.round((Date.now() - t0) / 1000);
+    if (await confirmBox({ title: t('vidDone'), text: t(res.gallery ? 'vDoneD' : 'vidDoneOld') + ' ' + t('vTook', { t: fmt(secs), d: fmt(vTotal()) }), ok: t('share'), cancel: t('ok') })) AND.share(JSON.stringify(res.src), res.name, 'video/mp4');
   } catch (e) { toast(errText(e), 5000); }
 }
 
 $('#videoTab').addEventListener('click', async e => {
   const vc = e.target.closest('[data-vc]');
-  if (vc) { const id = vc.dataset.vc; VP.sel = VP.sel === id ? null : id; const i = VP.p.clips.findIndex(c => c.id === id); if (VP.sel && i >= 0) { vPause(); VP.pos = vStart(i); } renderVideo(); return; }
+  if (vc) { const id = vc.dataset.vc; VP.sel = VP.sel === id ? null : id; const c = VP.p.clips.find(x => x.id === id); if (VP.sel && c) { vPause(); vSeekTo(c.at); } renderVideo(); return; }
   const vl = e.target.closest('[data-vl]');
   if (vl) { const x = VP.lib && VP.lib.items[+vl.dataset.vl]; if (x) vAddClips([x]); return; }
   const b = e.target.closest('[data-v]'); if (!b || b.disabled) return;
@@ -5276,20 +5307,22 @@ $('#videoTab').addEventListener('click', async e => {
   else if (k === 'done') { VP.sel = null; renderVideo(); }
   else if (k === 'trim') vTrim();
   else if (k === 'split') vSplit();
+  else if (k === 'fade') { const c = vSel(); if (!c) return; const before = JSON.stringify(VP.p); c.tx = c.tx ? 0 : 0.5; vCommit(before); vSync(); vSeekTo(Math.max(0, c.at - 1)); }
   else if (k === 'left') vMove(-1);
   else if (k === 'right') vMove(1);
-  else if (k === 'dup') { const c = vSel(); if (!c) return; const before = JSON.stringify(VP.p); const i = VP.p.clips.indexOf(c); const d = Object.assign({}, c, { id: uid() }); VP.p.clips.splice(i + 1, 0, d); VP.sel = d.id; vCommit(before); }
-  else if (k === 'del') { const c = vSel(); if (!c) return; const before = JSON.stringify(VP.p); VP.p.clips = VP.p.clips.filter(x => x !== c); VP.sel = null; vCommit(before); }
-  else if (k === 'undo') { if (!VP.undo.length) return; vPause(); VP.p = JSON.parse(VP.undo.pop()); VP.sel = null; ls.set('vproj', VP.p); VP.idx = -1; renderVideo(); }
-  else if (k === 'new') { if (await confirmBox({ title: t('tlNewQ'), text: t('vNewB'), ok: t('tlNewP'), danger: true })) { vPause(); VP.undo.push(JSON.stringify(VP.p)); VP.p = vNew(); VP.sel = null; VP.pos = 0; ls.set('vproj', VP.p); renderVideo(); } }
+  else if (k === 'dup') { const c = vSel(); if (!c) return; const before = JSON.stringify(VP.p); const i = VP.p.clips.indexOf(c); const d = Object.assign({}, c, { id: uid(), tx: 0 }); VP.p.clips.splice(i + 1, 0, d); VP.sel = d.id; vCommit(before); vSync(); }
+  else if (k === 'del') { const c = vSel(); if (!c) return; const before = JSON.stringify(VP.p); VP.p.clips = VP.p.clips.filter(x => x !== c); VP.sel = null; vCommit(before); vSync(); }
+  else if (k === 'undo') { if (!VP.undo.length) return; vPause(); VP.p = JSON.parse(VP.undo.pop()); VP.sel = null; vPlace(); vSave(); vSync(); renderVideo(); vSeekTo(VP.pos); }
+  else if (k === 'new') { if (await confirmBox({ title: t('tlNewQ'), text: t('vNewB'), ok: t('tlNewP'), danger: true })) { vPause(); VP.undo.push(JSON.stringify(VP.p)); VP.p = vNew(); VP.sel = null; VP.pos = 0; vSave(); vSync(); renderVideo(); } }
   else if (k === 'studio') vStudio();
   else if (k === 'music') vMusic();
   else if (k === 'subs') vSubs();
   else if (k === 'subEdit') vSubEdit();
   else if (k === 'rebuild') vToStudio(true);
-  else if (k === 'toOrig') { if (await confirmBox({ title: t('vSoundReset'), text: t('vSoundResetB'), ok: t('ok') })) { vPause(); VP.p.sound = 'orig'; ls.set('vproj', VP.p); renderVideo(); } }
+  else if (k === 'toOrig') { if (await confirmBox({ title: t('vSoundReset'), text: t('vSoundResetB'), ok: t('ok') })) { vPause(); VP.p.sound = 'orig'; vSave(); renderVideo(); } }
   else if (k === 'export') vExport();
 });
+document.addEventListener('visibilitychange', () => { if (document.hidden) vPause(); vRect(); });
 
 /* ---------- boot ---------- */
 let booted = false;

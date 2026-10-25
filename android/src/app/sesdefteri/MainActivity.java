@@ -62,6 +62,7 @@ public class MainActivity extends Activity implements Player.Listener {
     private static final int REQ_VIDEO = 16;
     private static final int REQ_VIDEO_TL = 17;
     private static final int REQ_VIDEO_V = 18;
+    private android.view.TextureView vview;
     private volatile String videoBusy;
 
     private WebView web;
@@ -90,7 +91,22 @@ public class MainActivity extends Activity implements Player.Listener {
         Player.I.init(this, this);
         web = new WebView(this);
         web.setBackgroundColor(isDark() ? 0xFF0F1412 : 0xFFEDF1EE);
-        setContentView(web);
+        android.widget.FrameLayout root = new android.widget.FrameLayout(this);
+        root.addView(web);
+        // the video preview: drawn natively, laid over the page where the page leaves room for it (vRect)
+        vview = new android.view.TextureView(this);
+        vview.setOpaque(true);
+        vview.setPivotX(0);
+        vview.setPivotY(0);
+        vview.setTranslationX(-100000);
+        root.addView(vview, new android.widget.FrameLayout.LayoutParams(16, 9));
+        vview.setSurfaceTextureListener(new android.view.TextureView.SurfaceTextureListener() {
+            @Override public void onSurfaceTextureAvailable(android.graphics.SurfaceTexture st, int w, int h) { VideoEngine.I.surface(MainActivity.this, st, w, h); }
+            @Override public void onSurfaceTextureSizeChanged(android.graphics.SurfaceTexture st, int w, int h) { VideoEngine.I.size(w, h); }
+            @Override public boolean onSurfaceTextureDestroyed(android.graphics.SurfaceTexture st) { VideoEngine.I.surfaceGone(); return true; }
+            @Override public void onSurfaceTextureUpdated(android.graphics.SurfaceTexture st) { }
+        });
+        setContentView(root);
         applyBars("page");
 
         WebSettings s = web.getSettings();
@@ -520,6 +536,18 @@ public class MainActivity extends Activity implements Player.Listener {
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        if (VideoEngine.I.isPlaying()) VideoEngine.I.pause();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        VideoEngine.I.idle();
+    }
+
+    @Override
     protected void onDestroy() {
         Player.I.init(this, null);
         Timeline.stop();
@@ -843,6 +871,27 @@ public class MainActivity extends Activity implements Player.Listener {
         @JavascriptInterface public void plLoop(final double a, final double b) { ui(new Runnable() { @Override public void run() { Player.I.setLoop((long) a, (long) b); } }); }
         @JavascriptInterface public void plSkips(final String id, final String json) { ui(new Runnable() { @Override public void run() { Player.I.setSkips(id, json); } }); }
         @JavascriptInterface public void plSleep(final double ms, final boolean end) { ui(new Runnable() { @Override public void run() { Player.I.setSleep((long) ms, end); } }); }
+        /* -- video preview (VideoEngine) -- */
+        @JavascriptInterface public void vSet(String json) { VideoEngine.I.project(MainActivity.this, json); }
+        @JavascriptInterface public void vPlay(double sec, String audioJson) { VideoEngine.I.play(MainActivity.this, sec, audioJson); }
+        @JavascriptInterface public void vPause() { VideoEngine.I.pause(); }
+        @JavascriptInterface public void vSeek(double sec) { VideoEngine.I.seek(sec); }
+        @JavascriptInterface public double vPos() { return VideoEngine.I.pos(); }
+        @JavascriptInterface public boolean vPlaying() { return VideoEngine.I.isPlaying(); }
+        /** where the preview goes, in page pixels (w = 0 hides it) */
+        @JavascriptInterface public void vRect(final double x, final double y, final double w, final double h) {
+            ui(new Runnable() {
+                @Override public void run() {
+                    float d = getResources().getDisplayMetrics().density;
+                    int pw = Math.max(16, (int) Math.round(w * d)), ph = Math.max(9, (int) Math.round(h * d));
+                    android.view.ViewGroup.LayoutParams lp = vview.getLayoutParams();
+                    if (w > 0 && (lp.width != pw || lp.height != ph)) { lp.width = pw; lp.height = ph; vview.setLayoutParams(lp); }
+                    vview.setTranslationX(w > 0 ? (float) (x * d) : -100000);
+                    vview.setTranslationY((float) (y * d));
+                    if (w > 0) VideoEngine.I.refresh();
+                }
+            });
+        }
         @JavascriptInterface public String tlPlay(String json, double sec) { try { Timeline.play(json, sec); return ""; } catch (Exception e) { return String.valueOf(e.getMessage()); } }
         @JavascriptInterface public void tlUpdate(String json) { try { Timeline.update(json); } catch (Exception ignored) { } }
         @JavascriptInterface public void tlStop() { Timeline.stop(); }
@@ -855,7 +904,7 @@ public class MainActivity extends Activity implements Player.Listener {
             jobs.put(id, cancel);
             boolean bg = false;
             try { bg = new JSONObject(argsJson).optBoolean("bg", false); } catch (Exception ignored) { }
-            final boolean heavy = !"peaks".equals(kind) && !"commit".equals(kind) && !"wsClean".equals(kind) && !"tlClean".equals(kind) && !"roomTest".equals(kind) && !"loudness".equals(kind) && !"asrStatus".equals(kind) && !"asrDelete".equals(kind) && !"vList".equals(kind) && !"vInfo".equals(kind);
+            final boolean heavy = !"peaks".equals(kind) && !"commit".equals(kind) && !"wsClean".equals(kind) && !"tlClean".equals(kind) && !"roomTest".equals(kind) && !"loudness".equals(kind) && !"asrStatus".equals(kind) && !"asrDelete".equals(kind) && !"vList".equals(kind) && !"vInfo".equals(kind) && !"vProxyClean".equals(kind);
             if (heavy) WorkService.begin(MainActivity.this);
             (bg ? bgPool : heavy || "wsClean".equals(kind) || "tlClean".equals(kind) ? studioPool : pool).execute(new Runnable() {
                 @Override
@@ -930,6 +979,11 @@ public class MainActivity extends Activity implements Player.Listener {
                             res = VideoEdit.info(MainActivity.this, a.getString("uri"));
                         } else if ("vRender".equals(kind)) {
                             res = VideoEdit.render(MainActivity.this, a, p, cancel);
+                        } else if ("vProxy".equals(kind)) {
+                            res = VideoEdit.proxy(MainActivity.this, a, p, cancel);
+                        } else if ("vProxyClean".equals(kind)) {
+                            VideoEdit.proxyClean(MainActivity.this, a.getJSONArray("keep"));
+                            res = new JSONObject();
                         } else if ("vSound".equals(kind)) {
                             res = VideoEdit.soundJob(MainActivity.this, a, p, cancel);
                         } else if ("tlVideo".equals(kind)) {

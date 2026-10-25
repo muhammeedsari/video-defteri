@@ -207,7 +207,7 @@ html,body{overflow-x:hidden;max-width:100%;overscroll-behavior:none}
 .asr-pick small{color:var(--muted);font-size:12px}
 .asr-row .btn{justify-self:start}
 /* Video Defteri: video tab */
-.v-stage{position:relative;background:#000;border-radius:var(--r);overflow:hidden;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;margin-top:6px}
+.v-stage{position:relative;background:#000;border-radius:var(--r);overflow:hidden;aspect-ratio:16/9;max-height:55vh;max-width:100%;margin-left:auto;margin-right:auto;display:flex;align-items:center;justify-content:center;margin-top:6px}
 .v-stage video{width:100%;height:100%;object-fit:contain;display:block}
 .v-ph{display:flex;flex-direction:column;align-items:center;gap:6px;color:#cfd6d2;text-align:center;padding:16px;font-size:13.5px}
 .v-ph .ic{width:34px;height:34px}
@@ -238,3 +238,6 @@ html,body{overflow-x:hidden;max-width:100%;overscroll-behavior:none}
 .v-sub{display:flex;gap:8px;align-items:flex-start;margin-top:8px}
 .v-sub .tc{flex:none;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:6px;font-size:12px}
 .v-sub textarea{flex:1;min-width:0;font:inherit;font-size:14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);padding:6px 8px;resize:vertical}
+.v-clip.fx::before{content:"";position:absolute;left:-2px;top:50%;width:8px;height:8px;margin-top:-4px;border-radius:50%;background:var(--accent);z-index:1}
+.v-clip em{position:absolute;inset:0;background:rgba(0,0,0,.45)}
+.vtab #recBtn{display:none}
