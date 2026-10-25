@@ -4,7 +4,8 @@
 > - Yüklü uygulama kimliği **`app.videodefteri`** (`build_apk.py` → `aapt --rename-manifest-package`), Ses Defteri'nin yanına ayrı kurulur. Java paketi **`app.sesdefteri` olarak kaldı**: hazır JNI köprüleri (`libsdsep.so`, `libsdmp3.so`) bu pakete bağlı; paketi değiştirmek için önce `android/native/*.c` yeniden derlenmeli.
 > - Uygulama adı ve klasör: "Video Defteri" (`Music/Video Defteri`). Sürüm 0.1 (versionCode 1); APK `android/VideoDefteri.apk`. Aynı imza anahtarı kullanılır.
 > - Ses Defteri'deki yeni sürümler: `git remote add ses https://github.com/muhammeedsari/ses-defteri && git fetch ses && git merge ses/main` (ortak geçmiş var).
-> - İlk sürüm planı: `docs/VIDEO-PLAN.md`.
+> - **Ana plan: `docs/PROJE_PLANI.md`** (aşamalar, kabul ölçütleri, kapsam dışı listesi, iş modeli) ve çalışma kuralları `docs/PROJE_TALIMATI.md`. Bir aşamayı kabul ölçütlerine bakmadan bitti sayma; kapsam dışı istekleri kullanıcıya hatırlat.
+> - 0.2 notları: `docs/VIDEO-PLAN.md`.
 > Aşağıdaki metin Ses Defteri içindir; çelişirse yukarıdaki geçerlidir.
 
 Bu dosyayı her oturumun başında oku. Ayrıntılar: `docs/DURUM.md` (sürüm geçmişi, ne çalışıyor, ne kaldı) ve `docs/MIMARI.md` (kod haritası, köprüler, veri yapıları).
