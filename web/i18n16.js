@@ -1,0 +1,42 @@
+/* Video Defteri 2.6 — volume line, crossfades, sound back into a video (merged into SD_I18N). */
+(function () {
+const A = {
+tr: { tlEnv: "Ses çizgisi", envHint: "Çizgiye dokun: nokta ekle. Noktayı sürükle: sesi aç/kıs. Noktayı basılı tut: sil.", envReset: "Çizgiyi sıfırla", envMute: "Sessiz", envN: "{n} nokta",
+  setTlXf: "Otomatik çapraz geçiş", setTlXfD: "Aynı katmanda üst üste gelen parçalar birbirine yumuşakça geçer", tlXfMade: "Çapraz geçiş: üst üste gelen kısım yumuşakça geçer",
+  tlVideo: "Videoya koy", vidPick: "Sesin konacağı videoyu seç", vidDone: "Video hazır", vidDoneD: "Galeri'de Filmler/Video Defteri klasörüne kaydedildi.", vidDoneOld: "Video uygulamanın klasörüne kaydedildi. Paylaşarak galeriye ya da başka bir uygulamaya gönderebilirsin.",
+  vidNone: "Bu dosyada görüntü bulunamadı", vidFmt: "Bu videonun biçimi desteklenmiyor" },
+en: { tlEnv: "Volume line", envHint: "Tap the line: add a point. Drag a point: louder/quieter. Hold a point: delete it.", envReset: "Reset line", envMute: "Silent", envN: "{n} points",
+  setTlXf: "Automatic crossfade", setTlXfD: "Clips that overlap on the same track blend smoothly into each other", tlXfMade: "Crossfade: the overlapping part blends smoothly",
+  tlVideo: "Put in video", vidPick: "Choose the video for this sound", vidDone: "Video ready", vidDoneD: "Saved to Movies/Video Defteri in your gallery.", vidDoneOld: "The video was saved in the app's folder. Share it to send it to your gallery or another app.",
+  vidNone: "No picture found in this file", vidFmt: "This video's format isn't supported" },
+de: { tlEnv: "Lautstärkelinie", envHint: "Linie antippen: Punkt setzen. Punkt ziehen: lauter/leiser. Punkt gedrückt halten: löschen.", envReset: "Linie zurücksetzen", envMute: "Stumm", envN: "{n} Punkte",
+  setTlXf: "Automatische Überblendung", setTlXfD: "Clips, die sich auf derselben Spur überlappen, gehen weich ineinander über", tlXfMade: "Überblendung: der überlappende Teil geht weich über",
+  tlVideo: "In Video einfügen", vidPick: "Wähle das Video für diesen Ton", vidDone: "Video fertig", vidDoneD: "In der Galerie unter Filme/Video Defteri gespeichert.", vidDoneOld: "Das Video liegt im Ordner der App. Teile es, um es in die Galerie oder an eine andere App zu senden.",
+  vidNone: "In dieser Datei wurde kein Bild gefunden", vidFmt: "Das Format dieses Videos wird nicht unterstützt" },
+fr: { tlEnv: "Ligne de volume", envHint: "Touche la ligne : ajoute un point. Fais glisser un point : plus fort/plus doux. Maintiens un point : supprime-le.", envReset: "Réinitialiser la ligne", envMute: "Muet", envN: "{n} points",
+  setTlXf: "Fondu enchaîné automatique", setTlXfD: "Les clips qui se chevauchent sur la même piste se fondent en douceur", tlXfMade: "Fondu enchaîné : la partie qui se chevauche se fond en douceur",
+  tlVideo: "Mettre dans une vidéo", vidPick: "Choisis la vidéo pour ce son", vidDone: "Vidéo prête", vidDoneD: "Enregistrée dans Films/Video Defteri de ta galerie.", vidDoneOld: "La vidéo est dans le dossier de l’app. Partage-la pour l’envoyer vers ta galerie ou une autre app.",
+  vidNone: "Aucune image trouvée dans ce fichier", vidFmt: "Le format de cette vidéo n’est pas pris en charge" },
+es: { tlEnv: "Línea de volumen", envHint: "Toca la línea: añade un punto. Arrastra un punto: más alto/más bajo. Mantén un punto: bórralo.", envReset: "Restablecer línea", envMute: "Silencio", envN: "{n} puntos",
+  setTlXf: "Fundido cruzado automático", setTlXfD: "Los clips que se solapan en la misma pista se funden suavemente", tlXfMade: "Fundido cruzado: la parte solapada se funde suavemente",
+  tlVideo: "Poner en un vídeo", vidPick: "Elige el vídeo para este sonido", vidDone: "Vídeo listo", vidDoneD: "Guardado en Películas/Video Defteri de tu galería.", vidDoneOld: "El vídeo está en la carpeta de la app. Compártelo para enviarlo a tu galería u otra app.",
+  vidNone: "No se encontró imagen en este archivo", vidFmt: "El formato de este vídeo no es compatible" },
+pt: { tlEnv: "Linha de volume", envHint: "Toque na linha: adiciona um ponto. Arraste um ponto: mais alto/mais baixo. Segure um ponto: apaga.", envReset: "Redefinir linha", envMute: "Mudo", envN: "{n} pontos",
+  setTlXf: "Crossfade automático", setTlXfD: "Clipes que se sobrepõem na mesma faixa passam suavemente de um para o outro", tlXfMade: "Crossfade: a parte sobreposta passa suavemente",
+  tlVideo: "Colocar no vídeo", vidPick: "Escolha o vídeo para este som", vidDone: "Vídeo pronto", vidDoneD: "Salvo em Filmes/Video Defteri na galeria.", vidDoneOld: "O vídeo está na pasta do app. Compartilhe para enviar à galeria ou a outro app.",
+  vidNone: "Nenhuma imagem encontrada neste arquivo", vidFmt: "O formato deste vídeo não é compatível" },
+ru: { tlEnv: "Линия громкости", envHint: "Нажми на линию — добавь точку. Тяни точку — громче/тише. Удерживай точку — удали её.", envReset: "Сбросить линию", envMute: "Тишина", envN: "Точек: {n}",
+  setTlXf: "Автоматический кроссфейд", setTlXfD: "Фрагменты, наложенные на одной дорожке, плавно переходят друг в друга", tlXfMade: "Кроссфейд: наложенная часть переходит плавно",
+  tlVideo: "Вставить в видео", vidPick: "Выбери видео для этого звука", vidDone: "Видео готово", vidDoneD: "Сохранено в галерее: Фильмы/Video Defteri.", vidDoneOld: "Видео сохранено в папке приложения. Поделись им, чтобы отправить в галерею или другое приложение.",
+  vidNone: "В этом файле нет изображения", vidFmt: "Формат этого видео не поддерживается" },
+ar: { tlEnv: "خط مستوى الصوت", envHint: "المس الخط لإضافة نقطة. اسحب النقطة لرفع الصوت أو خفضه. اضغط مطولًا على النقطة لحذفها.", envReset: "إعادة ضبط الخط", envMute: "صامت", envN: "{n} نقاط",
+  setTlXf: "تلاشٍ متقاطع تلقائي", setTlXfD: "المقاطع المتداخلة على المسار نفسه تنتقل إلى بعضها بسلاسة", tlXfMade: "تلاشٍ متقاطع: الجزء المتداخل ينتقل بسلاسة",
+  tlVideo: "ضعه في فيديو", vidPick: "اختر الفيديو لهذا الصوت", vidDone: "الفيديو جاهز", vidDoneD: "حُفظ في المعرض داخل Movies/Video Defteri.", vidDoneOld: "حُفظ الفيديو في مجلد التطبيق. شاركه لإرساله إلى المعرض أو إلى تطبيق آخر.",
+  vidNone: "لا توجد صورة في هذا الملف", vidFmt: "صيغة هذا الفيديو غير مدعومة" },
+zh: { tlEnv: "音量线", envHint: "点按线条：添加点。拖动点：调高/调低。按住点：删除。", envReset: "重置音量线", envMute: "静音", envN: "{n} 个点",
+  setTlXf: "自动交叉淡化", setTlXfD: "同一轨道上重叠的片段会平滑过渡", tlXfMade: "交叉淡化：重叠部分会平滑过渡",
+  tlVideo: "放入视频", vidPick: "选择要放入此声音的视频", vidDone: "视频已完成", vidDoneD: "已保存到相册的 Movies/Video Defteri。", vidDoneOld: "视频已保存在应用文件夹中。可通过分享发送到相册或其他应用。",
+  vidNone: "此文件中没有画面", vidFmt: "不支持此视频的格式" }
+};
+for (const l in A) window.SD_I18N[l] = Object.assign(window.SD_I18N[l] || {}, A[l]);
+})();

@@ -380,6 +380,32 @@ final class Workspace {
                     slice = new double[] { 0, 1 };
                     break;
                 }
+                case "clarify": {
+                    // 2.7 "make the voice clearer": measured against an average voice, then mud / presence / air / exciter, compressor, level
+                    Analyzer.Analysis an = analyze(in, inf, p, cancel);
+                    double[] mb = Enhancer.bandsOf(an.ltasPower, fs, an.fftSize), ref = Enhancer.referenceBands();
+                    double mud = bandDiff(mb, ref, 200, 400), pres = bandDiff(mb, ref, 2000, 4000), air = bandDiff(mb, ref, 6300, 10000);
+                    double mudDb = -Math.min(8, (1.5 + Math.max(0, mud) * 0.6) * str);
+                    double presDb = Math.min(7, (1.5 + Math.max(0, -pres) * 0.6) * str);
+                    double airDb = Math.min(5, (1 + Math.max(0, -air) * 0.4) * str);
+                    m = new Meter(ch, fs);
+                    head = new app.sesdefteri.dsp.Clarity(ch, fs, mudDb, presDb, airDb, 0.25 * str);
+                    head.to(new Stages.Compressor(ch, fs, an.speechMeanDb + 4, 1.6 + 0.6 * str)).to(new Limiter(ch, fs, -1.0, 1.5 * str)).to(m);
+                    rep.put("mud", Math.round(-mudDb * 10) / 10.0);
+                    rep.put("pres", Math.round(presDb * 10) / 10.0);
+                    rep.put("air", Math.round(airDb * 10) / 10.0);
+                    break;
+                }
+                case "voicefx": {
+                    String pr = a.optString("preset", "radio");
+                    rep.put("preset", pr);
+                    m = new Meter(ch, fs);
+                    if ("high".equals(pr) || "deep".equals(pr)) head = new TimePitch(ch, fs, 1, "high".equals(pr) ? 5 : -5, false);
+                    else head = new app.sesdefteri.dsp.VoiceFx(ch, fs, pr);
+                    head.to(new Limiter(ch, fs, -1.0, 0)).to(m);
+                    slice = new double[] { 0, 1 };
+                    break;
+                }
                 case "mix":
                     return mix(c, in, inf, out, a, p, cancel);
                 default:
@@ -749,6 +775,13 @@ final class Workspace {
     }
 
     /** per-band correction towards the target tone (smoothed over neighbours, capped) */
+    /** mean of measured − reference over the bands between lo and hi (Hz) */
+    static double bandDiff(double[] m, double[] ref, double lo, double hi) {
+        double s = 0; int n = 0;
+        for (int i = 0; i < Enhancer.BANDS.length; i++) if (Enhancer.BANDS[i] >= lo && Enhancer.BANDS[i] <= hi) { s += m[i] - ref[i]; n++; }
+        return n == 0 ? 0 : s / n;
+    }
+
     static double[] eqGains(double[] measured, double[] target, double str) {
         double[] g = new double[Enhancer.BANDS.length];
         for (int i = 0; i < g.length; i++) {

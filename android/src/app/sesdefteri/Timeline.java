@@ -23,6 +23,8 @@ final class Timeline {
     private Timeline() { }
 
     static final int RATE = 48000;
+    static final double HALF_PI = Math.PI / 2;
+    static final float ENV_FLOOR = -40;   // the bottom of the volume line is silence
 
     static File dir(Context c) {
         File d = new File(c.getFilesDir(), "proj");
@@ -63,7 +65,8 @@ final class Timeline {
         int ch, rate;
         long frames, at, in, len;
         float g, duck = 1;   // duck: gain while the other tracks are speaking (1 = never ducked)
-        int fi, fo;
+        int fi, fo, xi, xo;   // xi / xo: crossfades with the neighbouring clip on the same track (equal power)
+        double[] et; float[] ed;   // volume line: times in frames from the clip start, levels in dB
         byte[] buf = new byte[0];
         java.util.ArrayList<app.sesdefteri.dsp.Biquad> eq;   // live 5-band EQ (null = flat)
         float[][] tmp = new float[2][0];
@@ -85,7 +88,7 @@ final class Timeline {
         return l.isEmpty() ? null : l;
     }
 
-    /** clips: [{path, at, in, len (seconds), g (linear), fi, fo (seconds)}] */
+    /** clips: [{path, at, in, len (seconds), g (linear), fi, fo, xi, xo (seconds), env: [[t (s from clip start), dB]]}] */
     static final class Engine {
         final Clip[] clips;
         final long end;
@@ -109,6 +112,13 @@ final class Timeline {
                     k.g = (float) o.optDouble("g", 1);
                     k.fi = (int) Math.round(o.optDouble("fi", 0) * RATE);
                     k.fo = (int) Math.round(o.optDouble("fo", 0) * RATE);
+                    k.xi = (int) Math.round(o.optDouble("xi", 0) * RATE);
+                    k.xo = (int) Math.round(o.optDouble("xo", 0) * RATE);
+                    JSONArray ev = o.optJSONArray("env");
+                    if (ev != null && ev.length() > 0) {
+                        k.et = new double[ev.length()]; k.ed = new float[ev.length()];
+                        for (int j = 0; j < ev.length(); j++) { JSONArray pt = ev.getJSONArray(j); k.et[j] = pt.getDouble(0) * RATE; k.ed[j] = (float) pt.getDouble(1); }
+                    }
                     double dd = o.optDouble("duck", 0);
                     if (dd < 0) k.duck = (float) Math.pow(10, dd / 20);
                     k.eq = eq(o.optJSONArray("eq"), o.optDouble("bass", 0), o.optDouble("treble", 0));
@@ -162,6 +172,9 @@ final class Timeline {
                 int q = 0;
                 float[] L = out[0], Rr = out[1];
                 int base = off;
+                double[] et = k.et;
+                int j = 0;
+                if (et != null) while (j < et.length - 1 && et[j + 1] <= a - k.at) j++;
                 if (k.eq != null) {
                     if (k.tmp[0].length < cnt) k.tmp = new float[2][cnt];
                     L = k.tmp[0]; Rr = k.tmp[1]; base = 0;
@@ -172,6 +185,17 @@ final class Timeline {
                     float g = k.g;
                     if (k.fi > 0 && r < k.fi) g *= (float) r / k.fi;
                     if (k.fo > 0 && k.len - r < k.fo) g *= (float) (k.len - r) / k.fo;
+                    if (k.xi > 0 && r < k.xi) g *= (float) Math.sin(HALF_PI * r / k.xi);
+                    if (k.xo > 0 && k.len - r < k.xo) g *= (float) Math.sin(HALF_PI * (k.len - r) / k.xo);
+                    if (et != null) {
+                        float db;
+                        if (r <= et[0]) db = k.ed[0];
+                        else {
+                            while (j < et.length - 1 && et[j + 1] <= r) j++;
+                            db = j == et.length - 1 ? k.ed[j] : k.ed[j] + (float) ((k.ed[j + 1] - k.ed[j]) * (r - et[j]) / (et[j + 1] - et[j]));
+                        }
+                        g *= db <= ENV_FLOOR ? 0 : (float) Math.exp(db * 0.11512925);
+                    }
                     if (dep != null) g *= 1 - dep[off + i] * (1 - k.duck);
                     float l = (short) ((b[q] & 0xff) | (b[q + 1] << 8)) / 32768f;
                     q += 2;

@@ -60,6 +60,7 @@ public class MainActivity extends Activity implements Player.Listener {
     private static final int REQ_PICK = 14;
     private static final int REQ_DELETE = 15;
     private static final int REQ_VIDEO = 16;
+    private static final int REQ_VIDEO_TL = 17;
     private volatile String videoBusy;
 
     private WebView web;
@@ -286,6 +287,9 @@ public class MainActivity extends Activity implements Player.Listener {
         } else if (code == REQ_VIDEO) {
             Uri[] uris = result == RESULT_OK ? urisFrom(data) : null;
             if (uris != null && uris.length > 0) importVideos(uris);
+        } else if (code == REQ_VIDEO_TL) {
+            Uri[] uris = result == RESULT_OK ? urisFrom(data) : null;
+            js("window.__sdVideo && window.__sdVideo(" + (uris != null && uris.length > 0 ? q(uris[0].toString()) : "null") + ")");
         } else if (code == REQ_PICK) {
             Uri[] uris = result == RESULT_OK ? urisFrom(data) : null;
             if (uris != null && uris.length > 0) importUris(uris, true);
@@ -584,6 +588,18 @@ public class MainActivity extends Activity implements Player.Listener {
             });
         }
 
+        /** one video for the project's sound to go into; the answer comes back through window.__sdVideo */
+        @JavascriptInterface public void pickVideoFor() {
+            ui(new Runnable() {
+                @Override public void run() {
+                    Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                    i.addCategory(Intent.CATEGORY_OPENABLE);
+                    i.setType("video/*");
+                    try { startActivityForResult(i, REQ_VIDEO_TL); } catch (Exception ignored) { js("window.__sdVideo && window.__sdVideo(null)"); }
+                }
+            });
+        }
+
         @JavascriptInterface public void openSoundSettings() {
             ui(new Runnable() {
                 @Override public void run() {
@@ -831,6 +847,8 @@ public class MainActivity extends Activity implements Player.Listener {
                             res = Separator.split(MainActivity.this, a, p, cancel);
                         } else if ("tlRender".equals(kind)) {
                             res = Timeline.render(MainActivity.this, a, p, cancel);
+                        } else if ("tlVideo".equals(kind)) {
+                            res = VideoMux.run(MainActivity.this, a, p, cancel);
                         } else if ("tlClean".equals(kind)) {
                             Timeline.clean(MainActivity.this, a.optJSONArray("keep"));
                             res = new JSONObject();

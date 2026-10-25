@@ -1,0 +1,42 @@
+/* Video Defteri 2.7 — "make the voice clearer", character voices (merged into SD_I18N). */
+(function () {
+const A = {
+tr: { op_clarify: "Sesi netleştir", fxd_clarify: "Boğukluğu azaltır, anlaşılırlığı ve parlaklığı artırır, sesi dengeler", rpw_clarify: "Boğukluk −{m} dB, anlaşılırlık +{p} dB, parlaklık +{a} dB",
+  op_voicefx: "Ses efektleri", fxd_voicefx: "Sese hazır bir karakter ver",
+  vfx_radio: "Radyo", vfx_phone: "Telefon", vfx_megaphone: "Megafon", vfx_robot: "Robot", vfx_high: "İnce ses", vfx_deep: "Kalın ses",
+  vfxd_radio: "Eski radyo yayını gibi", vfxd_phone: "Telefonda konuşuyormuş gibi", vfxd_megaphone: "Hoparlörden anons", vfxd_robot: "Metalik, mekanik ses", vfxd_high: "Sesi inceltir (çizgi film)", vfxd_deep: "Sesi kalınlaştırır" },
+en: { op_clarify: "Make voice clearer", fxd_clarify: "Less muddiness, more clarity and brightness, a more even voice", rpw_clarify: "Muddiness −{m} dB, clarity +{p} dB, brightness +{a} dB",
+  op_voicefx: "Voice effects", fxd_voicefx: "Give the voice a ready-made character",
+  vfx_radio: "Radio", vfx_phone: "Phone", vfx_megaphone: "Megaphone", vfx_robot: "Robot", vfx_high: "Higher voice", vfx_deep: "Deeper voice",
+  vfxd_radio: "Like an old radio broadcast", vfxd_phone: "As if talking on the phone", vfxd_megaphone: "An announcement through a loudspeaker", vfxd_robot: "Metallic, mechanical voice", vfxd_high: "Makes the voice higher (cartoon)", vfxd_deep: "Makes the voice deeper" },
+de: { op_clarify: "Stimme klarer machen", fxd_clarify: "Weniger dumpf, mehr Verständlichkeit und Helligkeit, gleichmäßigere Stimme", rpw_clarify: "Dumpfheit −{m} dB, Verständlichkeit +{p} dB, Helligkeit +{a} dB",
+  op_voicefx: "Stimmeffekte", fxd_voicefx: "Gib der Stimme einen fertigen Charakter",
+  vfx_radio: "Radio", vfx_phone: "Telefon", vfx_megaphone: "Megafon", vfx_robot: "Roboter", vfx_high: "Höhere Stimme", vfx_deep: "Tiefere Stimme",
+  vfxd_radio: "Wie eine alte Radiosendung", vfxd_phone: "Als ob am Telefon gesprochen wird", vfxd_megaphone: "Eine Durchsage über Lautsprecher", vfxd_robot: "Metallische, mechanische Stimme", vfxd_high: "Macht die Stimme höher (Zeichentrick)", vfxd_deep: "Macht die Stimme tiefer" },
+fr: { op_clarify: "Rendre la voix plus claire", fxd_clarify: "Moins de son étouffé, plus de clarté et de brillance, une voix plus régulière", rpw_clarify: "Étouffement −{m} dB, clarté +{p} dB, brillance +{a} dB",
+  op_voicefx: "Effets de voix", fxd_voicefx: "Donne à la voix un caractère tout prêt",
+  vfx_radio: "Radio", vfx_phone: "Téléphone", vfx_megaphone: "Mégaphone", vfx_robot: "Robot", vfx_high: "Voix plus aiguë", vfx_deep: "Voix plus grave",
+  vfxd_radio: "Comme une vieille émission de radio", vfxd_phone: "Comme au téléphone", vfxd_megaphone: "Une annonce au haut-parleur", vfxd_robot: "Voix métallique et mécanique", vfxd_high: "Rend la voix plus aiguë (dessin animé)", vfxd_deep: "Rend la voix plus grave" },
+es: { op_clarify: "Aclarar la voz", fxd_clarify: "Menos sonido apagado, más claridad y brillo, una voz más pareja", rpw_clarify: "Opacidad −{m} dB, claridad +{p} dB, brillo +{a} dB",
+  op_voicefx: "Efectos de voz", fxd_voicefx: "Dale a la voz un carácter ya preparado",
+  vfx_radio: "Radio", vfx_phone: "Teléfono", vfx_megaphone: "Megáfono", vfx_robot: "Robot", vfx_high: "Voz más aguda", vfx_deep: "Voz más grave",
+  vfxd_radio: "Como una vieja emisión de radio", vfxd_phone: "Como si hablara por teléfono", vfxd_megaphone: "Un anuncio por altavoz", vfxd_robot: "Voz metálica y mecánica", vfxd_high: "Hace la voz más aguda (dibujos animados)", vfxd_deep: "Hace la voz más grave" },
+pt: { op_clarify: "Deixar a voz mais clara", fxd_clarify: "Menos abafado, mais clareza e brilho, uma voz mais uniforme", rpw_clarify: "Abafado −{m} dB, clareza +{p} dB, brilho +{a} dB",
+  op_voicefx: "Efeitos de voz", fxd_voicefx: "Dê à voz um personagem pronto",
+  vfx_radio: "Rádio", vfx_phone: "Telefone", vfx_megaphone: "Megafone", vfx_robot: "Robô", vfx_high: "Voz mais fina", vfx_deep: "Voz mais grossa",
+  vfxd_radio: "Como uma transmissão de rádio antiga", vfxd_phone: "Como se falasse ao telefone", vfxd_megaphone: "Um anúncio no alto-falante", vfxd_robot: "Voz metálica e mecânica", vfxd_high: "Deixa a voz mais fina (desenho animado)", vfxd_deep: "Deixa a voz mais grossa" },
+ru: { op_clarify: "Сделать голос чище", fxd_clarify: "Меньше глухости, больше разборчивости и яркости, ровнее голос", rpw_clarify: "Глухость −{m} дБ, разборчивость +{p} дБ, яркость +{a} дБ",
+  op_voicefx: "Голосовые эффекты", fxd_voicefx: "Придай голосу готовый характер",
+  vfx_radio: "Радио", vfx_phone: "Телефон", vfx_megaphone: "Мегафон", vfx_robot: "Робот", vfx_high: "Голос выше", vfx_deep: "Голос ниже",
+  vfxd_radio: "Как старая радиопередача", vfxd_phone: "Как разговор по телефону", vfxd_megaphone: "Объявление через громкоговоритель", vfxd_robot: "Металлический, механический голос", vfxd_high: "Делает голос выше (мультфильм)", vfxd_deep: "Делает голос ниже" },
+ar: { op_clarify: "توضيح الصوت", fxd_clarify: "كتمٌ أقل، ووضوح وسطوع أكثر، وصوت أكثر توازنًا", rpw_clarify: "الكتم −{m} dB، الوضوح +{p} dB، السطوع +{a} dB",
+  op_voicefx: "مؤثرات الصوت", fxd_voicefx: "امنح الصوت طابعًا جاهزًا",
+  vfx_radio: "راديو", vfx_phone: "هاتف", vfx_megaphone: "مكبر صوت", vfx_robot: "روبوت", vfx_high: "صوت أرفع", vfx_deep: "صوت أغلظ",
+  vfxd_radio: "كبث إذاعي قديم", vfxd_phone: "كأنه يتحدث في الهاتف", vfxd_megaphone: "إعلان عبر مكبر الصوت", vfxd_robot: "صوت معدني آلي", vfxd_high: "يجعل الصوت أرفع (كرتون)", vfxd_deep: "يجعل الصوت أغلظ" },
+zh: { op_clarify: "让声音更清晰", fxd_clarify: "减少闷浊感，提升清晰度和明亮度，让声音更均衡", rpw_clarify: "闷浊 −{m} dB，清晰度 +{p} dB，明亮度 +{a} dB",
+  op_voicefx: "声音特效", fxd_voicefx: "给声音加上现成的效果",
+  vfx_radio: "收音机", vfx_phone: "电话", vfx_megaphone: "扩音器", vfx_robot: "机器人", vfx_high: "高音", vfx_deep: "低音",
+  vfxd_radio: "像老式电台广播", vfxd_phone: "像在打电话", vfxd_megaphone: "像喇叭广播", vfxd_robot: "金属感的机械声", vfxd_high: "让声音变高（卡通）", vfxd_deep: "让声音变低沉" }
+};
+for (const l in A) window.SD_I18N[l] = Object.assign(window.SD_I18N[l] || {}, A[l]);
+})();

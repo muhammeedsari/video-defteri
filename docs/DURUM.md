@@ -35,6 +35,9 @@ Kullanıcı her sürümü telefonda test ediyor; aşağıdakiler teslim edildi. 
 - **2.5:** Sesten metne **tamamen isteğe bağlı**: Whisper base (~95 MB) ve small (~375 MB) Ayarlar'dan ya da ilk "Metne dök"te indirilir/silinir; APK 168 → 74 MB. Spleeter kaldı: "Sesi ayır" + ayrı bir "Ses ayırma ile gürültü sil" efekti. DPDFNet "Gelişmiş YZ gürültü temizliği" olarak duruyor (Temizle ekranı bunu kullanır).
   - Repo artık kendi başına derlenebilir: `android/fetch_vendor.sh` + taşınabilir `build_apk.py`; temiz kopyadan derlenen APK 2.5 ile birebir aynı içerikte ve aynı imzalı (doğrulandı).
 
+- **2.6:** Ses seviyesi çizgisi (klip başına `env: [[dosya zamanı, dB]]`, en alt −40 dB = sessiz; `Timeline.Engine` canlı + render), otomatik çapraz geçiş (aynı katmanda kısmi örtüşme, eşit güç `xi/xo`; Ayarlar > Stüdyo `tlXf`), **Videoya koy** (`VideoMux.java`: görüntü yeniden kodlanmadan kopyalanır, karışım AAC, Movies/Ses Defteri). Cihazda denenmedi.
+- **2.7:** **Sesi netleştir** (op `clarify`, `dsp/Clarity.java`: 80 Hz HP, 300 Hz kesme, 3 kHz artırma, 8 kHz raf, hafif exciter + kompresör + limiter; miktarlar ortalama sese göre ölçülür), **Ses efektleri** (op `voicefx`, `dsp/VoiceFx.java`: radyo, telefon, megafon, robot; ince/kalın = TimePitch ±5 yarım ton, formant yok). Cihazda denenmedi.
+
 ## 3. En son yazılan ve çalışan kod (2.4–2.5)
 - `android/src/app/sesdefteri/Denoiser.java` — DPDFNet akışlı gürültü temizleme düğümü (`Stage`): stereo → orta kanal, 1920 örnek gecikme telafisi, orijinalden `keep` oranı geri karıştırma (Hafif −12 dB, Dengeli −23 dB, Güçlü −34 dB), sonunda sessizlik + flush.
 - `Workspace.java`:
